@@ -14,7 +14,7 @@ library(ggplot2)
 ```
 
 ```{r}
-kyle.dat <- read.csv("data/kyle-data.csv")
+kyle.dat <- read.csv("data/csss-kyle.csv")
 
 generate_csss_network <- function(df, year){
   
