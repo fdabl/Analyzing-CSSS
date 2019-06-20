@@ -1,2 +1,2 @@
 # Analyzing Complex Collaborations
-This repository contains data about the annual Complex Systems Summer School from 2005 - 2018.
+This repository contains data about the annual Complex Systems Summer School from 2005 - 2018. The analysis code is in analysis.Rmd which compiles to an html page. You can view it by opening it with your browser.
