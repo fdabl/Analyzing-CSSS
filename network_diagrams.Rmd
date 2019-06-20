@@ -1,0 +1,107 @@
+---
+title: "csss_historic"
+author: "Kyle Furlong"
+date: "6/19/2019"
+output: html_document
+---
+
+```{r}
+library(DiagrammeR)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+```
+
+```{r}
+kyle.dat <- read.csv("data/kyle-data.csv")
+
+generate_csss_network <- function(df, year){
+  
+  partic.df <- df %>%
+    filter(Year == year) %>%
+    select(Name:Location) %>%
+    unique() %>%
+    mutate(
+      Name = as.factor(Name),
+      name.id = as.numeric(droplevels(Name)))
+  
+  edge.df <- df %>%
+    filter(Year == year) %>%
+    select(Title, name1 = Name, Year) %>%
+    left_join(df, by = c("Title", "Year")) %>%
+    filter(name1 != Name) %>%
+  select(Title, name1, name2 = Name, Topic, Topic_isced, Year) %>%
+  arrange(name1) %>%
+  mutate(name1 = as.factor(name1),
+         name2 = as.factor(name2),
+         name.id1 = as.numeric(droplevels(name1)),
+         name.id2 = as.numeric(droplevels(name2)))
+  
+  nodes.df <- create_node_df(
+    n = nrow(partic.df),
+    nodes = partic.df$name.id,
+    label = partic.df$Name,
+    color = "red"
+  )
+  
+  edges.df <- create_edge_df(
+    from = edge.df$name.id1,
+    to = edge.df$name.id2)
+  
+  graph <- create_graph(nodes_df = nodes.df, 
+                        edges_df = edges.df) %>%
+    render_graph() %>%
+    print()
+  
+}
+
+partic.2012 <- kyle.dat %>%
+  filter(Year == 2012) %>%
+  select(Name:Location) %>%
+  unique() %>%
+  arrange(Name) %>%
+  mutate(name.id = as.numeric(droplevels(Name)))
+
+edges.2012 <- kyle.dat %>%
+  filter(Year == 2012) %>%
+  select(Title, name1 = Name, Year) %>%
+  left_join(kyle.dat, by = c("Title", "Year")) %>%
+  filter(name1 != Name) %>%
+  select(Title, name1, name2 = Name, Topic, Topic_isced, Year) %>%
+  arrange(name1) %>%
+  mutate(name.id1 = as.numeric(droplevels(name1)),
+         name.id2 = as.numeric(droplevels(name2)))
+
+```
+
+
+```{r}
+
+node.df.2012 <- create_node_df(
+  n = nrow(partic.2012),
+  nodes = partic.2012$name.id,
+  label = partic.2012$Name,
+  color = "red"
+)
+
+edge.df.2012 <- create_edge_df(
+  from = edges.2012$name.id1,
+  to = edges.2012$name.id2)
+
+```
+
+```{r fig.height= 12, fig.width= 12}
+
+graph <- create_graph(nodes_df = node.df.2012, edges_df = edge.df.2012)
+graph %>% render_graph()
+
+generate_csss_network(df = kyle.dat, year = 2013)
+```
+
+
+
+
+
+
+
