@@ -1,0 +1,106 @@
+---
+title: "Descriptive Analysis of CSSS Data"
+date: 20th July, 2019
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align = 'center')
+```
+
+
+# Data Preparation
+```{r}
+library('dplyr')
+library('papaja')
+library('ggplot2')
+library('SentimentAnalysis')
+
+
+get_sentiment <- function(text) {
+  analyzeSentiment(text)$SentimentQDAP
+}
+
+
+datd <- read.csv('data/csss-dakota.csv', na.strings = '')
+datf <- read.csv('data/csss-fabian.csv', na.strings = '')
+datj <- read.csv('data/csss-jackie.csv', na.strings = '')
+date <- read.csv('data/csss-emily.csv', na.strings = '')
+datk <- read.csv('data/csss-kyle.csv', na.strings = c('NA', 'NA1', 'NA2'))
+
+
+# add sentiment of biography because ... why not?
+dat <- rbind(datf, date, datd, datk, datj) %>% 
+  mutate(
+    bio_sentiment = get_sentiment(as.character(Biography)),
+    iteration = interaction(Year, Location)
+  )
+```
+
+
+# Data Analysis
+## Descriptive Statistics
+Here we look at a few summary statistics and how they have changed over the years.
+```{r Summary-Statistics, results = 'asis'}
+dat_avg <- dat %>%
+  group_by(Year, Location) %>% 
+  summarize(
+    prop_female = mean(Gender == 'Female', na.rm = TRUE),
+    avg_group_size = mean(Size, na.rm = TRUE),
+    prop_US = mean(Country_University %in% c('US', 'USA', 'United States')),
+    nr_projects = length(unique(Title)),
+    nr_participants = length(unique(Name)),
+    nr_projects_per_part = nr_participants / nr_projects,
+    prop_PhD = mean(Position == 'Student', na.rm = TRUE), # this overcounts; fix!
+    prop_postdoc = mean(Position == 'PostDoc', na.rm = TRUE),
+    prop_industry = mean(Position == 'Industry', na.rm = TRUE),
+    avg_sentiment = mean(bio_sentiment, na.rm = TRUE)
+  )
+
+tab_names <- c(
+  'Year', 'Location', '%Female', 'Avg_Group_Size', '%US', '#Projects',
+  '#Participants', '#Proj_per_Part', '%PhD', '%PostDoc', '%Industry', 'Avg_Sentiment'
+)
+apa_table(setNames(dat_avg, tab_names))
+```
+
+Note that the summer school of 2011 apparently had only one project in which everybody took part. The percent of women participants has become close to what it should be in the last two years. There is some issues with the years 2012-2014 with respect to the number of PhD students.
+
+## Disciplines across Time
+We need to be careful since some people can come from more than one discipline.
+```{r}
+library('stringr')
+
+dat_disciplines <- c()
+iterations <- unique(dat$iteration)
+
+for (school in iterations) {
+  disciplines <- str_split(filter(dat, iteration == school)$Discipline_isced, ';|,', simplify = TRUE)
+  disciplines <- str_to_title(str_trim(disciplines))
+  disciplines <- disciplines[disciplines != '']
+  
+  if (!all(is.na(disciplines))) {
+    tab <- table(disciplines)
+    d <- cbind(school, data.frame(tab), as.numeric(tab) / sum(as.numeric(tab)))
+    dat_disciplines <- rbind(dat_disciplines, d)
+  }
+}
+```
+
+```{r, fig.width = 10, fig.height = 14}
+colnames(dat_disciplines) <- c('Iteration', 'Disciplines', 'Frequency', 'Proportion')
+uniq_disciplines <- as.character(unique(dat_disciplines$Disciplines))
+sorted_levels <- uniq_disciplines[order(nchar(uniq_disciplines), uniq_disciplines, decreasing = TRUE)]
+dat_disciplines$Disciplines <- factor(dat_disciplines$Disciplines, levels = sorted_levels)
+
+ggplot(dat_disciplines, aes(x = Disciplines, y = Proportion)) +
+  geom_bar(stat = 'identity') +
+  facet_wrap(~ Iteration) +
+  coord_flip() +
+  theme_bw() +
+  ylab('') +
+  theme(axis.text.x = element_text(angle = 90, size = 6))
+```
