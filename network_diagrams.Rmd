@@ -17,7 +17,6 @@ library(ggplot2)
 kyle.dat <- read.csv("data/csss-kyle.csv")
 
 generate_csss_network_df <- function(df, year){
-  
   partic.df <- df %>%
     filter(Year == year) %>%
     select(Name:Location) %>%
@@ -60,6 +59,8 @@ generate_csss_network_df <- function(df, year){
   
   graph <- create_graph(nodes_df = nodes.df, 
                         edges_df = edges.df)
+  
+  return(graph)
 }
 
 create_network_df <- function(graph_code) {
@@ -67,8 +68,6 @@ create_network_df <- function(graph_code) {
     render_graph() %>%
     print()
 }
-
-
 
 ```
 
@@ -81,6 +80,68 @@ nw.2013 %>%
 
 ```
 
+```{r graph_functions}
+#averages for entire network by year
+graph_measures <- function(graph) {
+  df <- data.frame(avg_degree = NA, 
+                   max_ecct = NA, 
+                   avg_btwn = NA, 
+                   avg_close = NA, 
+                   avg_path = NA, 
+                   avg_const = NA)
+  df$avg_degree <- get_agg_degree_total(graph, "mean")
+  df$max_ecct <- get_max_eccentricity(graph)
+  df$avg_btwn <- mean(get_betweenness(graph)$betweenness)
+  df$avg_close <- mean(get_closeness(graph)$closeness)
+  df$avg_path <- get_mean_distance(graph)
+  df$avg_const <- mean(get_constraint(graph)$constraint)
+  return(df)
+}
+
+```
+
+```{r community_detection_functions}
+#community detection comparison
+compare_communities <- function(graph) {
+  gn.com <- get_cmty_edge_btwns(graph)
+  wt.com <- get_cmty_walktrap(graph)
+  
+  return(cor(gn.com$edge_btwns_group, wt.com$walktrap_group))
+}
+
+create_group_graph <- function(graph, detection = "gn") {
+  groups <- get_node_df(graph)
+  if(detection == "gn") {
+    groups <- left_join(groups, get_cmty_edge_btwns(graph), by = "id")
+  } else {
+    groups <- left_join(groups, get_cmty_walktrap(graph), by = "id")
+  }
+  if(!require(RColorBrewer)) {install.packages("RColorBrewer")}
+  
+  palette <- palette(rainbow(length(unique(groups[,ncol(groups)]))))
+  groups$color <- palette[groups[,ncol(groups)]]
+  
+  render_graph(create_graph(groups, get_edge_df(graph))) %>%
+    print()
+}
+
+```
+
+```{r node_based_analysis}
+#node-measures
+node_measures <- function(graph) {
+  nodes <- get_node_df(graph)
+  results <- nodes %>%
+    left_join(get_degree_total(graph), by = "id") %>%
+    left_join(get_betweenness(graph), by = "id") %>%
+    left_join(get_closeness(graph), by = "id") %>%
+    left_join(get_eigen_centrality(graph), by = "id") %>%
+    left_join(get_constraint(graph), by = "id")
+}
+
+
+
+```
 
 
 
