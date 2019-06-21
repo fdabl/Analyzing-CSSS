@@ -16,7 +16,7 @@ library(ggplot2)
 ```{r}
 kyle.dat <- read.csv("data/csss-kyle.csv")
 
-generate_csss_network <- function(df, year){
+generate_csss_network_df <- function(df, year){
   
   partic.df <- df %>%
     filter(Year == year) %>%
@@ -26,17 +26,25 @@ generate_csss_network <- function(df, year){
       Name = as.factor(Name),
       name.id = as.numeric(droplevels(Name)))
   
-  edge.df <- df %>%
+  edge.df.temp <- df %>%
     filter(Year == year) %>%
     select(Title, name1 = Name, Year) %>%
     left_join(df, by = c("Title", "Year")) %>%
     filter(name1 != Name) %>%
-  select(Title, name1, name2 = Name, Topic, Topic_isced, Year) %>%
-  arrange(name1) %>%
-  mutate(name1 = as.factor(name1),
-         name2 = as.factor(name2),
-         name.id1 = as.numeric(droplevels(name1)),
-         name.id2 = as.numeric(droplevels(name2)))
+    select(Title, name1, name2 = Name, Topic, Topic_isced, Year) %>%
+    arrange(name1) %>%
+    mutate(name1 = as.factor(name1),
+           name2 = as.factor(name2),
+           name.id1 = as.numeric(droplevels(name1)),
+           name.id2 = as.numeric(droplevels(name2)),
+           name.link = paste(name.id1, name.id2, sep = "_"))
+  
+  edge.df <- edge.df.temp %>%
+    select(name.id1, name.id2) %>%
+    mutate(name.link = ifelse(name.id1<name.id2, paste(name.id1, name.id2, sep = "_"), paste(name.id2, name.id1, sep = "_"))) %>%
+    select(name.link) %>%
+    unique() %>%
+    left_join(edge.df.temp, by = "name.link")
   
   nodes.df <- create_node_df(
     n = nrow(partic.df),
@@ -47,42 +55,30 @@ generate_csss_network <- function(df, year){
   
   edges.df <- create_edge_df(
     from = edge.df$name.id1,
-    to = edge.df$name.id2)
+    to = edge.df$name.id2,
+    dir = rep("none", length(edge.df$name.id1)))
   
   graph <- create_graph(nodes_df = nodes.df, 
-                        edges_df = edges.df) %>%
-    render_graph() %>%
-    print()
-  
+                        edges_df = edges.df)
 }
 
-partic.2012 <- kyle.dat %>%
-  filter(Year == 2012) %>%
-  select(Name:Location) %>%
-  unique() %>%
-  arrange(Name) %>%
-  mutate(name.id = as.numeric(droplevels(Name)))
+create_network_df <- function(graph_code) {
+  graph_code %>%
+    render_graph() %>%
+    print()
+}
 
-edges.2012 <- kyle.dat %>%
-  filter(Year == 2012) %>%
-  select(Title, name1 = Name, Year) %>%
-  left_join(kyle.dat, by = c("Title", "Year")) %>%
-  filter(name1 != Name) %>%
-  select(Title, name1, name2 = Name, Topic, Topic_isced, Year) %>%
-  arrange(name1) %>%
-  mutate(name.id1 = as.numeric(droplevels(name1)),
-         name.id2 = as.numeric(droplevels(name2)))
+
 
 ```
 
-
-
 ```{r fig.height= 12, fig.width= 12}
 
-graph <- create_graph(nodes_df = node.df.2012, edges_df = edge.df.2012)
-graph %>% render_graph()
+nw.2013 <- generate_csss_network_df(df = kyle.dat, year = 2013)
 
-generate_csss_network(df = kyle.dat, year = 2013)
+nw.2013 %>%
+  create_network_df()
+
 ```
 
 
