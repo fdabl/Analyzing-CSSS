@@ -13,12 +13,21 @@ library(ggplot2)
 
 ```
 
-```{r}
-kyle.dat <- read.csv("data/csss-kyle.csv")
+```{r read_data}
+all <- read.csv("data/csss-all.csv")
+dakota <- read.csv("data/csss-dakota.csv")
+emily <- read.csv("data/csss-emily.csv")
+fabian <- read.csv("data/csss-fabian.csv")
+jackie <- read.csv("data/csss-jackie.csv")
+kyle <- read.csv("data/csss-kyle.csv")
 
-generate_csss_network_df <- function(df, year){
+```
+
+
+```{r}
+generate_csss_network_df <- function(df, iter){
   partic.df <- df %>%
-    filter(Year == year) %>%
+    filter(iteration == as.factor(iter)) %>%
     select(Name:Location) %>%
     unique() %>%
     mutate(
@@ -26,7 +35,7 @@ generate_csss_network_df <- function(df, year){
       name.id = as.numeric(droplevels(Name)))
   
   edge.df.temp <- df %>%
-    filter(Year == year) %>%
+    filter(iteration == iter) %>%
     select(Title, name1 = Name, Year) %>%
     left_join(df, by = c("Title", "Year")) %>%
     filter(name1 != Name) %>%
@@ -49,7 +58,8 @@ generate_csss_network_df <- function(df, year){
     n = nrow(partic.df),
     nodes = partic.df$name.id,
     label = partic.df$Name,
-    color = "red"
+    color = "red", 
+    year = iter
   )
   
   edges.df <- create_edge_df(
@@ -63,40 +73,53 @@ generate_csss_network_df <- function(df, year){
   return(graph)
 }
 
-create_network_df <- function(graph_code) {
-  graph_code %>%
-    render_graph() %>%
-    print()
+graph_network <- function(graph_code) {
+  render_graph(graph_code)
 }
 
 ```
 
 ```{r fig.height= 12, fig.width= 12}
 
-nw.2013 <- generate_csss_network_df(df = kyle.dat, year = 2013)
+generate_all_graphs <- function(df) {
+  data.list <- list()
+  for(i in 1:length(unique(df$iteration))) {
+    data.list[[i]] <- generate_csss_network_df(df, iter = unique(df$iteration)[i])
+  }
+  return(data.list)
+}
 
-nw.2013 %>%
-  create_network_df()
+all.graphs <- generate_all_graphs(all)
 
 ```
 
 ```{r graph_functions}
 #averages for entire network by year
 graph_measures <- function(graph) {
-  df <- data.frame(avg_degree = NA, 
+  df <- data.frame(graph = get_node_df(graph)$year[1],
+                   avg_degree = NA, 
                    max_ecct = NA, 
                    avg_btwn = NA, 
-                   avg_close = NA, 
                    avg_path = NA, 
                    avg_const = NA)
   df$avg_degree <- get_agg_degree_total(graph, "mean")
   df$max_ecct <- get_max_eccentricity(graph)
   df$avg_btwn <- mean(get_betweenness(graph)$betweenness)
-  df$avg_close <- mean(get_closeness(graph)$closeness)
   df$avg_path <- get_mean_distance(graph)
   df$avg_const <- mean(get_constraint(graph)$constraint)
   return(df)
 }
+
+yearly_compare <- function(graphs) {
+  compile <- graph_measures(graphs[[1]])
+  for(i in 2:length(all.graphs)) {
+    compile[nrow(compile) + 1,] <- graph_measures(graphs[[i]])
+  }
+  return(compile)
+}
+yearly.compare <- yearly_compare(all.graphs)
+
+#degree distribution 
 
 ```
 
@@ -138,8 +161,6 @@ node_measures <- function(graph) {
     left_join(get_eigen_centrality(graph), by = "id") %>%
     left_join(get_constraint(graph), by = "id")
 }
-
-
 
 ```
 
