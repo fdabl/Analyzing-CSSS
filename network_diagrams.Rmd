@@ -76,20 +76,6 @@ edges.2012 <- kyle.dat %>%
 ```
 
 
-```{r}
-
-node.df.2012 <- create_node_df(
-  n = nrow(partic.2012),
-  nodes = partic.2012$name.id,
-  label = partic.2012$Name,
-  color = "red"
-)
-
-edge.df.2012 <- create_edge_df(
-  from = edges.2012$name.id1,
-  to = edges.2012$name.id2)
-
-```
 
 ```{r fig.height= 12, fig.width= 12}
 
