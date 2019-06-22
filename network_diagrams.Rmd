@@ -60,7 +60,11 @@ generate_csss_network_df <- function(df, iter){
     nodes = partic.df$name.id,
     label = partic.df$Name,
     color = "red", 
-    year = iter
+    year = iter, 
+    discp = partic.df$Discipline_isced, 
+    nat = partic.df$Nationality, 
+    pos = partic.df$Position, 
+    cntry = partic.df$Country_University 
   )
   
   edges.df <- create_edge_df(
@@ -192,6 +196,15 @@ node_measures <- function(graph) {
     left_join(get_eigen_centrality(graph), by = "id") %>%
     left_join(get_constraint(graph), by = "id")
 }
+
+#attempting to get homophily measures
+nodes <- get_node_df(all.graphs[[1]])
+edges <- get_edge_df(all.graphs[[1]])
+
+cur.edges <- edges[edges$from == 1, ]
+cur.edges <- cur.edges %>%
+  left_join(nodes, by = "id")
+
 
 ```
 
