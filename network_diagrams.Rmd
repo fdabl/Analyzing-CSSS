@@ -11,6 +11,7 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 
+theme_set(theme_bw())
 ```
 
 ```{r read_data}
@@ -119,7 +120,37 @@ yearly_compare <- function(graphs) {
 }
 yearly.compare <- yearly_compare(all.graphs)
 
-#degree distribution 
+avdg <- ggplot(data = yearly.compare) +
+  geom_col(mapping = aes(x = graph, y = avg_degree)) +
+  coord_flip() +
+  labs(y = "Average Degree", x = "Year and Location")
+
+diam <- ggplot(data = yearly.compare) +
+  geom_col(mapping = aes(x = graph, y = max_ecct)) +
+  coord_flip() +
+  labs(y = "Diameter", x = "Year and Location")
+
+path <- ggplot(data = yearly.compare) +
+  geom_col(mapping = aes(x = graph, y = avg_path)) +
+  coord_flip() +
+  labs(y = "Average Path Length", x = "Year and Location")
+
+cons <- ggplot(data = yearly.compare) +
+  geom_col(mapping = aes(x = graph, y = avg_const)) +
+  coord_flip() +
+  labs(y = "Average Constraint", x = "Year and Location")
+
+cowplot::plot_grid(avdg, diam, path, cons)
+
+#degree distribution
+palette <- palette(rainbow(17))
+dd.plot <- ggplot()
+for(i in 1:length(all.graphs)) {
+  dd.plot <- dd.plot + geom_line(get_degree_distribution(all.graphs[[i]]), mapping = aes(x = degree, y = total_degree_dist))
+}
+plot(dd.plot)
+
+##need to do degree distribution comparison
 
 ```
 
