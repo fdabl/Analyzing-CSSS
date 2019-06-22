@@ -195,15 +195,44 @@ node_measures <- function(graph) {
     left_join(get_closeness(graph), by = "id") %>%
     left_join(get_eigen_centrality(graph), by = "id") %>%
     left_join(get_constraint(graph), by = "id")
+  
+  #get homophily -- needs to be updated
+  edges <- get_edge_df(graph)
+  for(i in unique(nodes$id)) {
+    cur.edges <- edges[edges$from == i,]
+    cur.edges <- cur.edges %>%
+      left_join(nodes, by = "id")
+    
+    discp.shares <- as.data.frame(table(cur.edges$discp))[as.data.frame(table(cur.edges$discp))$Freq != 0, ]
+    discp.shares$prop <- discp.shares$Freq/sum(discp.shares$Freq)
+    results$discp_hmph <- hhi(discp.shares, "prop")
+    
+    pos.shares <- as.data.frame(table(cur.edges$pos))[as.data.frame(table(cur.edges$pos))$Freq != 0, ]
+    pos.shares$prop <- pos.shares$Freq/sum(pos.shares$Freq)
+    results$pos_hmph <- hhi(pos.shares, "prop")
+    
+    cntry.shares <- as.data.frame(table(cur.edges$cntry))[as.data.frame(table(cur.edges$cntry))$Freq != 0, ]
+    cntry.shares$prop <- cntry.shares$Freq/sum(cntry.shares$Freq)
+    results$cntry_hmph <- hhi(cntry.shares, "prop")
+  }
+  
+  return(results)
 }
 
+node.data <- node_measures(all.graphs[[12]])
+
 #attempting to get homophily measures
-nodes <- get_node_df(all.graphs[[1]])
-edges <- get_edge_df(all.graphs[[1]])
+require(hhi)
+nodes <- get_node_df(all.graphs[[12]])
+edges <- get_edge_df(all.graphs[[12]])
 
 cur.edges <- edges[edges$from == 1, ]
 cur.edges <- cur.edges %>%
   left_join(nodes, by = "id")
+
+cal.shares <- as.data.frame(table(cur.edges$discp))[as.data.frame(table(cur.edges$discp))$Freq != 0, ]
+cal.shares$prop <- cal.shares$Freq/sum(cal.shares$Freq)
+discp.hmphly <- hhi(cal.shares, "prop")
 
 
 ```
