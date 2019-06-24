@@ -204,7 +204,7 @@ graph_measures <- function(graph) {
 }
 yearly_compare <- function(graphs) {
   compile <- graph_measures(graphs[[1]])
-  for(i in 2:length(all.graphs)) {
+  for(i in 2:length(graphs)) {
     compile[nrow(compile) + 1,] <- graph_measures(graphs[[i]])
   }
   return(compile)
@@ -277,7 +277,7 @@ wt.graph <- create_group_graph(all.graphs[[2]], detection = "wt")
 #
 ```
 
-```{r node_based_analysis, message=FALSE}
+```{r node_based_analysis, warning=FALSE}
 #node-measures
 node_measures <- function(graph) {
   nodes <- get_node_df(graph)
@@ -298,31 +298,63 @@ node_measures <- function(graph) {
     cur.edges <- cur.edges[-1]
     colnames(cur.edges) <- c("from", "id", "rel", "dir")
     cur.edges <- left_join(cur.edges, nodes, by = "id")
-    
-    discp.shares <- as.data.frame(table(cur.edges$discp))[as.data.frame(table(cur.edges$discp))$Freq != 0, ]
-    discp.shares$prop <- discp.shares$Freq/sum(discp.shares$Freq)
-    results$discp_hmph[results$id == i] <- hhi(discp.shares, "prop")
-    
-    pos.shares <- as.data.frame(table(cur.edges$pos))[as.data.frame(table(cur.edges$pos))$Freq != 0, ]
-    pos.shares$prop <- pos.shares$Freq/sum(pos.shares$Freq)
-    results$pos_hmph[results$id == i] <- hhi(pos.shares, "prop")
-    
-    cntry.shares <- as.data.frame(table(cur.edges$cntry))[as.data.frame(table(cur.edges$cntry))$Freq != 0, ]
-    cntry.shares$prop <- cntry.shares$Freq/sum(cntry.shares$Freq)
-    results$cntry_hmph[results$id == i] <- hhi(cntry.shares, "prop")
+    if(!is.null(dim(cur.edges))) {
+      discp.shares <- as.data.frame(table(cur.edges$discp))[as.data.frame(table(cur.edges$discp))$Freq != 0, ]
+      discp.shares$prop <- discp.shares$Freq/sum(discp.shares$Freq)
+      results$discp_hmph[results$id == i] <- hhi(discp.shares, "prop")
+      
+      pos.shares <- as.data.frame(table(cur.edges$pos))[as.data.frame(table(cur.edges$pos))$Freq != 0, ]
+      pos.shares$prop <- pos.shares$Freq/sum(pos.shares$Freq)
+      results$pos_hmph[results$id == i] <- hhi(pos.shares, "prop")
+      
+      cntry.shares <- as.data.frame(table(cur.edges$cntry))[as.data.frame(table(cur.edges$cntry))$Freq != 0, ]
+      cntry.shares$prop <- cntry.shares$Freq/sum(cntry.shares$Freq)
+      results$cntry_hmph[results$id == i] <- hhi(cntry.shares, "prop")
+    }
   }
   
   return(results)
 }
 
 ##need to get data for all graphs
-node.data <- node_measures(all.graphs[[12]])
+get_all_node_data <- function(graphs) {
+  compile <- list()
+  for(i in 1:length(graphs)) {
+    compile[[i]] <- node_measures(graphs[[i]])
+  }
+  return(compile)
+}
+node.data <- suppressWarnings(get_all_node_data(all.graphs))
 
-node.data %>%
-  gather(key, value, total_degree, betweenness, eigen_centrality, discp_hmph, pos_hmph, cntry_hmph) %>%
-  ggplot(aes(x = value)) +
-  geom_histogram() +
-  facet_wrap(~key, scale = "free_x")
+#summing measures by discipline -- need to split up discp categories
+graph_discp_data <- function(nd) {
+  discp.groups <- nd %>%
+    group_by(discp) %>%
+    summarize(dg = mean(total_degree), 
+              btwn = mean(betweenness), 
+              eigen = mean(eigen_centrality), 
+              cnst = mean(constraint), 
+              discp_hmph = mean(discp_hmph), 
+              pos_hmph = mean(pos_hmph), 
+              cntry_hmph = mean(cntry_hmph))
+  
+  discp.groups %>%
+    gather(key, value, dg, btwn, eigen, discp_hmph, pos_hmph, cntry_hmph) %>%
+    ggplot(aes(x = value)) +
+    geom_histogram() +
+    facet_wrap(~key, scale = "free_x")
+}
+
+for(i in 1:length(node.data)) {
+  graph_discp_data(node.data[[i]])
+}
+
+
+# node.data %>%
+#   gather(key, value, total_degree, betweenness, eigen_centrality, discp_hmph, pos_hmph, cntry_hmph) %>%
+#   ggplot(aes(x = value)) +
+#   geom_histogram() +
+#   facet_wrap(~key, scale = "free_x")
 ```
 
 
