@@ -230,10 +230,20 @@ cowplot::plot_grid(avdg, diam, path, cons)
 #degree distribution
 palette <- palette(rainbow(17))
 dd.plot <- ggplot()
-for(i in 1:length(all.graphs)) {
-  dd.plot <- dd.plot + geom_line(get_degree_distribution(all.graphs[[i]]), mapping = aes(x = degree, y = total_degree_dist))
-}
-plot(dd.plot)
+
+
+
+data <- rbindlist(lapply(1:length(all.graphs), function(x) { 
+    df <- get_degree_distribution(all.graphs[[x]]) 
+    df$network_id <- as.factor(x)
+    return(df)
+  } 
+))
+
+data %>%
+  ggplot(aes(x = degree, y = total_degree_dist, color = network_id)) +
+  geom_line()
+
 ##need to do degree distribution comparison
 ```
 
@@ -307,6 +317,12 @@ node_measures <- function(graph) {
 }
 node.data <- node_measures(all.graphs[[12]])
 #what do we want to graph? 
+
+node.data %>%
+  gather(key, value, total_degree, betweenness, eigen_centrality, discp_hmph, pos_hmph, cntry_hmph) %>%
+  ggplot(aes(x = value)) +
+  geom_histogram() +
+  facet_wrap(~key, scale = "free_x")
 ```
 
 
