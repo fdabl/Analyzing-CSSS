@@ -186,7 +186,7 @@ generate_all_graphs <- function(df) {
 all.graphs <- generate_all_graphs(all)
 ```
 
-```{r graph_functions}
+```{r graph_functions, message=FALSE}
 #averages for entire network by year
 graph_measures <- function(graph) {
   df <- data.frame(graph = get_node_df(graph)$year[1],
@@ -228,10 +228,9 @@ cons <- ggplot(data = yearly.compare) +
   labs(y = "Average Constraint", x = "Year and Location")
 cowplot::plot_grid(avdg, diam, path, cons)
 #degree distribution
+
 palette <- palette(rainbow(17))
 dd.plot <- ggplot()
-
-
 
 data <- rbindlist(lapply(1:length(all.graphs), function(x) { 
     df <- get_degree_distribution(all.graphs[[x]]) 
@@ -244,10 +243,9 @@ data %>%
   ggplot(aes(x = degree, y = total_degree_dist, color = network_id)) +
   geom_line()
 
-##need to do degree distribution comparison
 ```
 
-```{r community_detection_functions}
+```{r community_detection_functions, message=FALSE}
 #community detection comparison
 compare_communities <- function(graph) {
   gn.com <- get_cmty_edge_btwns(graph)
@@ -276,9 +274,10 @@ gn.graph <- create_group_graph(all.graphs[[2]], detection = "gn")
 wt.graph <- create_group_graph(all.graphs[[2]], detection = "wt")
 
 #what do we want to see?
+#
 ```
 
-```{r node_based_analysis}
+```{r node_based_analysis, message=FALSE}
 #node-measures
 node_measures <- function(graph) {
   nodes <- get_node_df(graph)
@@ -292,7 +291,7 @@ node_measures <- function(graph) {
   results$pos_hmph <- NULL
   results$cntry_hmph <- NULL
   
-  #attempting to get homophily measures
+  #attempting to get homophily measures --need to add gender homophily, and prestige homophily
   edges <- get_edge_df(graph)
   for(i in unique(nodes$id)) {
     cur.edges <- edges[edges$from == i,]
@@ -315,8 +314,9 @@ node_measures <- function(graph) {
   
   return(results)
 }
+
+##need to get data for all graphs
 node.data <- node_measures(all.graphs[[12]])
-#what do we want to graph? 
 
 node.data %>%
   gather(key, value, total_degree, betweenness, eigen_centrality, discp_hmph, pos_hmph, cntry_hmph) %>%
