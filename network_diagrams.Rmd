@@ -5,12 +5,13 @@ date: "6/19/2019"
 output: html_document
 ---
 
-```{r}
+```{r, warning=FALSE}
 library(DiagrammeR)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 require(hhi)
+require(data.table)
 theme_set(theme_bw())
 ```
 
@@ -342,11 +343,12 @@ graph_discp_data <- function(nd) {
     gather(key, value, dg, btwn, eigen, discp_hmph, pos_hmph, cntry_hmph) %>%
     ggplot(aes(x = value)) +
     geom_histogram() +
-    facet_wrap(~key, scale = "free_x")
+    facet_wrap(~key, scale = "free_x") +
+    labs(title = nd$year[1])
 }
 
 for(i in 1:length(node.data)) {
-  graph_discp_data(node.data[[i]])
+  print(graph_discp_data(node.data[[i]]))
 }
 
 
