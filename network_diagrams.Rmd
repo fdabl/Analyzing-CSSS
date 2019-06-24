@@ -327,7 +327,7 @@ get_all_node_data <- function(graphs) {
 }
 node.data <- suppressWarnings(get_all_node_data(all.graphs))
 
-#summing measures by discipline -- need to split up discp categories
+#summing measures by discipline
 graph_discp_data <- function(nd) {
   discp.groups <- nd %>%
     group_by(discp) %>%
@@ -341,8 +341,9 @@ graph_discp_data <- function(nd) {
   
   discp.groups %>%
     gather(key, value, dg, btwn, eigen, discp_hmph, pos_hmph, cntry_hmph) %>%
-    ggplot(aes(x = value)) +
-    geom_histogram() +
+    ggplot(aes(x = discp, y = value)) +
+    geom_col() +
+    coord_flip() +
     facet_wrap(~key, scale = "free_x") +
     labs(title = nd$year[1])
 }
