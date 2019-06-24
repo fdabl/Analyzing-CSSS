@@ -327,7 +327,7 @@ get_all_node_data <- function(graphs) {
 }
 node.data <- suppressWarnings(get_all_node_data(all.graphs))
 
-#summing measures by discipline
+#summing measures by discipline -- need to do a little bit more cleaning
 graph_discp_data <- function(nd) {
   discp.groups <- nd %>%
     group_by(discp) %>%
@@ -339,16 +339,31 @@ graph_discp_data <- function(nd) {
               pos_hmph = mean(pos_hmph), 
               cntry_hmph = mean(cntry_hmph))
   
-  discp.groups %>%
-    gather(key, value, dg, btwn, eigen, discp_hmph, pos_hmph, cntry_hmph) %>%
-    ggplot(aes(x = discp, y = value)) +
+  discp.groups$discp <- stringr::str_replace(discp.groups$discp, "[,]", ";")
+  split <- discp.groups %>% 
+    separate(discp, c("discp1", "discp2", "discp3"), sep = ";", remove = TRUE, fill = "right") %>% 
+    gather(key, DISCP, discp1, discp2, discp3) %>%
+    filter(!is.na(DISCP)) %>%
+    group_by(DISCP) %>%
+    summarize(dg = mean(dg), 
+              btwn = mean(btwn), 
+              eigen = mean(eigen), 
+              cnst = mean(cnst), 
+              discp_hmph = mean(discp_hmph), 
+              pos_hmph = mean(pos_hmph), 
+              cntry_hmph = mean(cntry_hmph))
+  
+  split %>%
+    gather(key, value, dg:eigen, discp_hmph:cntry_hmph) %>%
+    ggplot(aes(x = DISCP, y = value)) +
     geom_col() +
     coord_flip() +
     facet_wrap(~key, scale = "free_x") +
     labs(title = nd$year[1])
 }
 
-for(i in 1:length(node.data)) {
+#missing the first 4 data sets currently due to lack of discipline information in current dataset
+for(i in 5:length(node.data)) {
   print(graph_discp_data(node.data[[i]]))
 }
 
