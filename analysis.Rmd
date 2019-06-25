@@ -1,6 +1,7 @@
 ---
 title: "Descriptive Analysis of CSSS Data"
-date: 20th July, 2019
+date: 24th July, 2019
+author: Fabian Dablander
 output:
   html_document:
     toc: true
@@ -44,6 +45,7 @@ dat <- rbind(datf, date, datd, datk, datj) %>%
 # Data Analysis
 ## Descriptive Statistics
 Here we look at a few summary statistics and how they have changed over the years.
+
 ```{r Summary-Statistics, results = 'asis'}
 dat_avg <- dat %>%
   group_by(Year, Location) %>% 
@@ -103,4 +105,73 @@ ggplot(dat_disciplines, aes(x = Disciplines, y = Proportion)) +
   theme_bw() +
   ylab('') +
   theme(axis.text.x = element_text(angle = 90, size = 6))
+```
+
+## Gini Coefficient
+```{r}
+library('DescTools')
+
+DISCIPLINES <- as.character(unique(dat_disciplines$Disciplines))
+map <- list()
+
+i <- 1
+for (d in DISCIPLINES) {
+  map[[d]] <- i
+  i <- i + 1
+}
+
+dat_dsum<- dat_disciplines %>% 
+  mutate(
+    Disciplines_int = map[as.character(Disciplines)]
+  ) %>% 
+  group_by(Iteration) %>% 
+  summarize(gini = Gini(Disciplines_int))
+
+ggplot(dat_dsum, aes(x = Iteration, y = gini)) +
+  geom_point(stat = 'identity') +
+  geom_line(group = 1) +
+  theme_bw() +
+  ylim(c(0, 1)) +
+  xlab('') +
+  ylab('Gini Coefficient') +
+  theme(axis.text.x = element_text(angle = 90, size = 12))
+```
+
+## Survey Responses
+First, we rename the columns to have more concise names.
+
+```{r}
+new_names <- c(
+  'Timestamp', 'Name', 'Year', 'Location', 'Discipline', 'Closeness_Projects',
+  'Communication_Difficulty', 'Input_Usefulness', 'CSSS_Influence', 'Published',
+  'Publishing_Difficulty', 'Continued_Collaboration', 'Interdisciplinary_Thoughts'
+)
+
+dats <- read.csv('data/csss-survey.csv')
+colnames(dats) <- new_names
+dats <- dats %>% 
+  mutate(
+    Published = ifelse(Published == 'Yes', 1, 0),
+    Continued_Collaboration = ifelse(Continued_Collaboration == 'Yes', 1, 0)
+  )
+```
+
+### Word cloud
+```{r}
+library('tm')
+library('wordcloud')
+library('RColorBrewer')
+
+docs <- Corpus(VectorSource(as.character(dats$Interdisciplinary_Thoughts)))
+docs <- tm_map(docs, removePunctuation)
+docs <- tm_map(docs, removeWords, stopwords('english'))
+
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words = 100, random.order = FALSE, rot.per = 0.35, 
+          colors = brewer.pal(8, "Dark2"))
 ```
