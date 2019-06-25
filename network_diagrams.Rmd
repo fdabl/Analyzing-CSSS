@@ -1,0 +1,379 @@
+---
+title: "csss_historic"
+author: "Kyle Furlong"
+date: "6/19/2019"
+output: html_document
+---
+
+```{r, warning=FALSE}
+library(DiagrammeR)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+require(hhi)
+require(data.table)
+theme_set(theme_bw())
+```
+
+```{r read_data}
+all <- read.csv("data/csss-all.csv")
+dakota <- read.csv("data/csss-dakota.csv")
+emily <- read.csv("data/csss-emily.csv")
+fabian <- read.csv("data/csss-fabian.csv")
+jackie <- read.csv("data/csss-jackie.csv")
+kyle <- read.csv("data/csss-kyle.csv")
+```
+
+```{r}
+generate_csss_network_df <- function(df, iter){
+  partic.df <- df %>%
+    filter(iteration == as.factor(iter)) %>%
+    select(Name:Location) %>%
+    unique() %>%
+    mutate(
+      Name = as.factor(Name),
+      name.id = as.numeric(droplevels(Name)))
+  
+  edge.df.temp <- df %>%
+    filter(iteration == iter) %>%
+    select(Title, name1 = Name, Year) %>%
+    left_join(df, by = c("Title", "Year")) %>%
+    filter(name1 != Name) %>%
+    select(Title, name1, name2 = Name, Topic, Topic_isced, Year) %>%
+    arrange(name1) %>%
+    mutate(name1 = as.factor(name1),
+           name2 = as.factor(name2),
+           name.id1 = as.numeric(droplevels(name1)),
+           name.id2 = as.numeric(droplevels(name2)),
+           name.link = paste(name.id1, name.id2, sep = "_"))
+  
+  edge.df <- edge.df.temp %>%
+    select(name.id1, name.id2) %>%
+    mutate(name.link = ifelse(name.id1<name.id2, paste(name.id1, name.id2, sep = "_"), paste(name.id2, name.id1, sep = "_"))) %>%
+    select(name.link) %>%
+    unique() %>%
+    left_join(edge.df.temp, by = "name.link")
+  
+  nodes.df <- create_node_df(
+    n = nrow(partic.df),
+    nodes = partic.df$name.id,
+    label = partic.df$Name,
+    color = "red", 
+    year = iter, 
+    discp = partic.df$Discipline_isced, 
+    nat = partic.df$Nationality, 
+    pos = partic.df$Position, 
+    cntry = partic.df$Country_University 
+  )
+  
+  edges.df <- create_edge_df(
+    from = edge.df$name.id1,
+    to = edge.df$name.id2,
+    dir = rep("none", length(edge.df$name.id1)))
+  
+  graph <- create_graph(nodes_df = nodes.df, 
+                        edges_df = edges.df)
+  
+  return(graph)
+}
+
+graph_network <- function(graph_code) {
+  render_graph(graph_code)
+}
+```
+
+```{r university network}
+
+generate_university_network_df <- function(df, year = NA, colorByContinent = FALSE){
+  if (!is.na(year)){
+    df <- filter(df, Year == year)
+  }
+  euro.countries <- c("Austria", "Belgium", "Czech Republic", "Denmark", "Estonia", "France", "Germany", 
+                        "Hungary", "Iceland", "Ireland", "Italy", "Netherlands", "Norway", "Poland", "Portugal", "Russia", "Serbia", 
+                        "Serbia and Montenegro", "Slovenia", "Spain", "Sweden", "Switzerland", "The Netherlands", "Turkey", "UK", "United Kingdom")
+  afri.countries <- c("Nigeria", "South Africa")
+  asian.countries <- c("China", "India", "Iran", "Israel", "Japan", "Lebanon", "Hong Kong", "Pakistan", "South Korea", "Singapore", "Signapore")
+  s.amer.countries <- c("Argentina", "Argentinia", "Brazil", "Colombia", "Columbia", "Chile", "Venezuela")
+  n.amer.countries <- c("Canada", "Canda", "Costa Rica", "Guatemala", "Mexico", "United States", "US", "USA")
+    
+    
+  univ.df <- df %>%
+    select(Name, Affiliation:Location) %>%
+    filter(!is.na(Affiliation)) %>%
+    unique() %>%
+    mutate(
+      Affiliation = as.factor(Affiliation),
+      aff.id = as.numeric(droplevels(Affiliation))
+    ) %>%
+    group_by(Affiliation, aff.id) %>%
+    summarise(aff.count = n()) %>%
+    ungroup() %>%
+    left_join(unique(select(df, Affiliation, Country_University)), by = "Affiliation") %>%
+    mutate(Country_University = as.character(Country_University),
+           ContColor = ifelse(Country_University %in% euro.countries, "blue",
+                                ifelse(Country_University %in% afri.countries, "green", 
+                                       ifelse(Country_University %in% asian.countries, "red",
+                                               ifelse(Country_University %in% s.amer.countries, "orange", 
+                                                      ifelse(Country_University %in% n.amer.countries, "black", "purple"))))))
+  
+  temp.edge.df <- df %>%
+    select(Title, aff1 = Affiliation, name1 = Name, Year) %>%
+    left_join(df, by = c("Title", "Year")) %>%
+    filter(aff1 != Affiliation, !is.na(aff1), !is.na(Affiliation)) %>%
+    select(Title, name1, name2 = Name, aff1, aff2 = Affiliation, Topic_isced, Country_University) %>%
+    mutate(aff1 = as.factor(aff1),
+           aff2 = as.factor(aff2),
+           aff1.id = as.numeric(droplevels(aff1)),
+           aff2.id = as.numeric(droplevels(aff2)),
+           title.id = as.numeric(droplevels(as.factor(Title))),
+           aff.link = paste(title.id, aff1.id, aff2.id, sep = "_"))
+  
+  univ.edge.df <- temp.edge.df %>%
+    select(title.id, aff1.id, aff2.id) %>%
+    mutate(aff.link = ifelse(aff1.id<aff2.id, 
+                             paste(title.id, aff1.id, aff2.id, sep = "_"), 
+                             paste(title.id, aff2.id, aff1.id, sep = "_"))) %>%
+    select(aff.link) %>%
+    unique() %>%
+    left_join(temp.edge.df, by = "aff.link") %>%
+    group_by(aff1.id, aff2.id) %>%
+    mutate(aff.link.count = n()) %>%
+    ungroup()
+  
+  if (colorByContinent){
+    nodes.df <- create_node_df(
+    n = nrow(univ.df),
+    nodes = univ.df$aff.id,
+    #label = univ.df$Affiliation,
+    fillcolor = univ.df$ContColor,
+    #height = univ.df$aff.count
+  )
+  }else{
+    nodes.df <- create_node_df(
+    n = nrow(univ.df),
+    nodes = univ.df$aff.id,
+    #label = univ.df$Affiliation,
+    #height = univ.df$aff.count
+    )
+  }
+  
+  edges.df <- create_edge_df(
+      from = univ.edge.df$aff1.id,
+      to = univ.edge.df$aff2.id,
+      dir = rep("none", nrow(univ.edge.df)))
+    
+  graph <- create_graph(nodes_df = nodes.df, 
+                        edges_df = edges.df) %>%
+    add_global_graph_attrs(
+      attr = "layout", 
+      value = "neato", 
+      attr_type = "graph")
+  return(graph)
+}
+
+render_graph(generate_university_network_df(all, year = 2017, colorByContinent = TRUE))
+```
+
+
+
+```{r fig.height= 12, fig.width= 12}
+generate_all_graphs <- function(df) {
+  data.list <- list()
+  for(i in 1:length(unique(df$iteration))) {
+    data.list[[i]] <- generate_csss_network_df(df, iter = unique(df$iteration)[i])
+  }
+  return(data.list)
+}
+all.graphs <- generate_all_graphs(all)
+```
+
+```{r graph_functions, message=FALSE}
+#averages for entire network by year
+graph_measures <- function(graph) {
+  df <- data.frame(graph = get_node_df(graph)$year[1],
+                   avg_degree = NA, 
+                   max_ecct = NA, 
+                   avg_btwn = NA, 
+                   avg_path = NA, 
+                   avg_const = NA)
+  df$avg_degree <- get_agg_degree_total(graph, "mean")
+  df$max_ecct <- get_max_eccentricity(graph)
+  df$avg_btwn <- mean(get_betweenness(graph)$betweenness)
+  df$avg_path <- get_mean_distance(graph)
+  df$avg_const <- mean(get_constraint(graph)$constraint)
+  return(df)
+}
+yearly_compare <- function(graphs) {
+  compile <- graph_measures(graphs[[1]])
+  for(i in 2:length(graphs)) {
+    compile[nrow(compile) + 1,] <- graph_measures(graphs[[i]])
+  }
+  return(compile)
+}
+yearly.compare <- yearly_compare(all.graphs)
+avdg <- ggplot(data = yearly.compare) +
+  geom_col(mapping = aes(x = graph, y = avg_degree)) +
+  coord_flip() +
+  labs(y = "Average Degree", x = "Year and Location")
+diam <- ggplot(data = yearly.compare) +
+  geom_col(mapping = aes(x = graph, y = max_ecct)) +
+  coord_flip() +
+  labs(y = "Diameter", x = "Year and Location")
+path <- ggplot(data = yearly.compare) +
+  geom_col(mapping = aes(x = graph, y = avg_path)) +
+  coord_flip() +
+  labs(y = "Average Path Length", x = "Year and Location")
+cons <- ggplot(data = yearly.compare) +
+  geom_col(mapping = aes(x = graph, y = avg_const)) +
+  coord_flip() +
+  labs(y = "Average Constraint", x = "Year and Location")
+cowplot::plot_grid(avdg, diam, path, cons)
+#degree distribution
+
+palette <- palette(rainbow(17))
+dd.plot <- ggplot()
+
+data <- rbindlist(lapply(1:length(all.graphs), function(x) { 
+    df <- get_degree_distribution(all.graphs[[x]]) 
+    df$network_id <- as.factor(x)
+    return(df)
+  } 
+))
+
+data %>%
+  ggplot(aes(x = degree, y = total_degree_dist, color = network_id)) +
+  geom_line()
+
+```
+
+```{r community_detection_functions, message=FALSE}
+#community detection comparison
+compare_communities <- function(graph) {
+  gn.com <- get_cmty_edge_btwns(graph)
+  wt.com <- get_cmty_walktrap(graph)
+  
+  return(cor(gn.com$edge_btwns_group, wt.com$walktrap_group))
+}
+create_group_graph <- function(graph, detection = "gn") {
+  groups <- get_node_df(graph)
+  if(detection == "gn") {
+    groups <- left_join(groups, get_cmty_edge_btwns(graph), by = "id")
+  } else {
+    groups <- left_join(groups, get_cmty_walktrap(graph), by = "id")
+  }
+  
+  if(!require(RColorBrewer)) {install.packages("RColorBrewer")}
+  
+  palette <- palette(rainbow(length(unique(groups[,ncol(groups)]))))
+  groups$color <- palette[groups[,ncol(groups)]]
+  
+  return(create_graph(groups, get_edge_df(graph)))
+}
+
+compare_communities(all.graphs[[2]])
+gn.graph <- create_group_graph(all.graphs[[2]], detection = "gn")
+wt.graph <- create_group_graph(all.graphs[[2]], detection = "wt")
+
+#what do we want to see?
+#
+```
+
+```{r node_based_analysis, warning=FALSE}
+#node-measures
+node_measures <- function(graph) {
+  nodes <- get_node_df(graph)
+  results <- nodes %>%
+    left_join(get_degree_total(graph), by = "id") %>%
+    left_join(get_betweenness(graph), by = "id") %>%
+    left_join(get_eigen_centrality(graph), by = "id") %>%
+    left_join(get_constraint(graph), by = "id")
+  
+  results$discp_hmph <- NULL
+  results$pos_hmph <- NULL
+  results$cntry_hmph <- NULL
+  
+  #attempting to get homophily measures --need to add gender homophily, and prestige homophily
+  edges <- get_edge_df(graph)
+  for(i in unique(nodes$id)) {
+    cur.edges <- edges[edges$from == i,]
+    cur.edges <- cur.edges[-1]
+    colnames(cur.edges) <- c("from", "id", "rel", "dir")
+    cur.edges <- left_join(cur.edges, nodes, by = "id")
+    if(!is.null(dim(cur.edges))) {
+      discp.shares <- as.data.frame(table(cur.edges$discp))[as.data.frame(table(cur.edges$discp))$Freq != 0, ]
+      discp.shares$prop <- discp.shares$Freq/sum(discp.shares$Freq)
+      results$discp_hmph[results$id == i] <- hhi(discp.shares, "prop")
+      
+      pos.shares <- as.data.frame(table(cur.edges$pos))[as.data.frame(table(cur.edges$pos))$Freq != 0, ]
+      pos.shares$prop <- pos.shares$Freq/sum(pos.shares$Freq)
+      results$pos_hmph[results$id == i] <- hhi(pos.shares, "prop")
+      
+      cntry.shares <- as.data.frame(table(cur.edges$cntry))[as.data.frame(table(cur.edges$cntry))$Freq != 0, ]
+      cntry.shares$prop <- cntry.shares$Freq/sum(cntry.shares$Freq)
+      results$cntry_hmph[results$id == i] <- hhi(cntry.shares, "prop")
+    }
+  }
+  
+  return(results)
+}
+
+##need to get data for all graphs
+get_all_node_data <- function(graphs) {
+  compile <- list()
+  for(i in 1:length(graphs)) {
+    compile[[i]] <- node_measures(graphs[[i]])
+  }
+  return(compile)
+}
+node.data <- suppressWarnings(get_all_node_data(all.graphs))
+
+#summing measures by discipline -- need to do a little bit more cleaning
+graph_discp_data <- function(nd) {
+  discp.groups <- nd %>%
+    group_by(discp) %>%
+    summarize(dg = mean(total_degree), 
+              btwn = mean(betweenness), 
+              eigen = mean(eigen_centrality), 
+              cnst = mean(constraint), 
+              discp_hmph = mean(discp_hmph), 
+              pos_hmph = mean(pos_hmph), 
+              cntry_hmph = mean(cntry_hmph))
+  
+  discp.groups$discp <- stringr::str_replace(discp.groups$discp, "[,]", ";")
+  split <- discp.groups %>% 
+    separate(discp, c("discp1", "discp2", "discp3"), sep = ";", remove = TRUE, fill = "right") %>% 
+    gather(key, DISCP, discp1, discp2, discp3) %>%
+    filter(!is.na(DISCP)) %>%
+    group_by(DISCP) %>%
+    summarize(dg = mean(dg), 
+              btwn = mean(btwn), 
+              eigen = mean(eigen), 
+              cnst = mean(cnst), 
+              discp_hmph = mean(discp_hmph), 
+              pos_hmph = mean(pos_hmph), 
+              cntry_hmph = mean(cntry_hmph))
+  
+  split %>%
+    gather(key, value, dg:eigen, discp_hmph:cntry_hmph) %>%
+    ggplot(aes(x = DISCP, y = value)) +
+    geom_col() +
+    coord_flip() +
+    facet_wrap(~key, scale = "free_x") +
+    labs(title = nd$year[1])
+}
+
+#missing the first 4 data sets currently due to lack of discipline information in current dataset
+for(i in 5:length(node.data)) {
+  print(graph_discp_data(node.data[[i]]))
+}
+
+
+# node.data %>%
+#   gather(key, value, total_degree, betweenness, eigen_centrality, discp_hmph, pos_hmph, cntry_hmph) %>%
+#   ggplot(aes(x = value)) +
+#   geom_histogram() +
+#   facet_wrap(~key, scale = "free_x")
+```
+
+
+
