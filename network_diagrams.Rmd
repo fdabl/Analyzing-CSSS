@@ -5,7 +5,7 @@ date: "6/19/2019"
 output: html_document
 ---
 
-```{r, warning=FALSE}
+```{r, warning=FALSE, message = FALSE}
 library(DiagrammeR)
 library(dplyr)
 library(tidyr)
@@ -22,6 +22,13 @@ emily <- read.csv("data/csss-emily.csv")
 fabian <- read.csv("data/csss-fabian.csv")
 jackie <- read.csv("data/csss-jackie.csv")
 kyle <- read.csv("data/csss-kyle.csv")
+
+clean_all <- read.csv("data/cleaned_csss-all.csv")
+clean_all$iteration <- paste(clean_all$Year, clean_all$Location, sep = ".")
+
+no.2011 <- clean_all %>%
+  filter(Year != 2011) %>%
+  arrange(iteration)
 ```
 
 ```{r}
@@ -31,7 +38,7 @@ generate_csss_network_df <- function(df, iter){
     select(Name:Location) %>%
     unique() %>%
     mutate(
-      Name = droplevels(Name),
+      Name = as.factor(Name),
       name.id = as.numeric(droplevels(Name)))
   
   edge.df.temp <- df %>%
@@ -59,7 +66,7 @@ generate_csss_network_df <- function(df, iter){
     nodes = partic.df$name.id,
     label = partic.df$Name,
     color = "red", 
-    year = iter, 
+    year = as.character(iter),
     discp = partic.df$Discipline_isced, 
     nat = partic.df$Nationality, 
     pos = partic.df$Position, 
@@ -86,6 +93,8 @@ graph_network(generate_csss_network_df(all, iter = "2014.Santa Fe"))
 
 generate_csss_network_df(all, iter = "2014.Santa Fe") %>%
   get_node_df()
+
+graph_network(all.graphs)
 ```
 
 ```{r university network}
@@ -176,6 +185,8 @@ generate_university_network_df <- function(df, year = NA, colorByContinent = FAL
   return(graph)
 }
 
+render_graph(generate_university_network_df(all, year = 2017, colorByContinent = TRUE))
+
 render_graph(generate_university_network_df(all, year = 2010, colorByContinent = TRUE))
 ```
 
@@ -189,18 +200,21 @@ generate_all_graphs <- function(df) {
   }
   return(data.list)
 }
-all.graphs <- generate_all_graphs(all)
+all.graphs <- generate_all_graphs(no.2011)
 ```
 
 ```{r graph_functions, message=FALSE}
 #averages for entire network by year
 graph_measures <- function(graph) {
-  df <- data.frame(graph = get_node_df(graph)$year[1],
+  nd <- get_node_df(graph)
+  year <- nd$year[1]
+  df <- data.frame(graph = NA,
                    avg_degree = NA, 
                    max_ecct = NA, 
                    avg_btwn = NA, 
                    avg_path = NA, 
                    avg_const = NA)
+  df$graph <- year
   df$avg_degree <- get_agg_degree_total(graph, "mean")
   df$max_ecct <- get_max_eccentricity(graph)
   df$avg_btwn <- mean(get_betweenness(graph)$betweenness)
