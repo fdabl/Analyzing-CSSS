@@ -27,11 +27,11 @@ kyle <- read.csv("data/csss-kyle.csv")
 ```{r}
 generate_csss_network_df <- function(df, iter){
   partic.df <- df %>%
-    filter(iteration == as.factor(iter)) %>%
+    filter(iteration == as.character(iter)) %>%
     select(Name:Location) %>%
     unique() %>%
     mutate(
-      Name = as.factor(Name),
+      Name = droplevels(Name),
       name.id = as.numeric(droplevels(Name)))
   
   edge.df.temp <- df %>%
@@ -80,10 +80,15 @@ generate_csss_network_df <- function(df, iter){
 graph_network <- function(graph_code) {
   render_graph(graph_code)
 }
+
+graph_network(generate_csss_network_df(all, iter = "2014.Santa Fe"))
+
+
+generate_csss_network_df(all, iter = "2014.Santa Fe") %>%
+  get_node_df()
 ```
 
 ```{r university network}
-
 generate_university_network_df <- function(df, year = NA, colorByContinent = FALSE){
   if (!is.na(year)){
     df <- filter(df, Year == year)
@@ -171,7 +176,7 @@ generate_university_network_df <- function(df, year = NA, colorByContinent = FAL
   return(graph)
 }
 
-render_graph(generate_university_network_df(all, year = 2017, colorByContinent = TRUE))
+render_graph(generate_university_network_df(all, year = 2010, colorByContinent = TRUE))
 ```
 
 
