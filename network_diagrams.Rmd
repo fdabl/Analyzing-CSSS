@@ -70,7 +70,8 @@ generate_csss_network_df <- function(df, iter){
     discp = partic.df$Discipline_isced, 
     nat = partic.df$Nationality, 
     pos = partic.df$Position, 
-    cntry = partic.df$Country_University 
+    cntry = partic.df$Country_University, 
+    prstg = partic.df$Prestige
   )
   
   edges.df <- create_edge_df(
@@ -301,6 +302,10 @@ node_measures <- function(graph) {
       cntry.shares <- as.data.frame(table(cur.edges$cntry))[as.data.frame(table(cur.edges$cntry))$Freq != 0, ]
       cntry.shares$prop <- cntry.shares$Freq/sum(cntry.shares$Freq)
       results$cntry_hmph[results$id == i] <- hhi(cntry.shares, "prop")
+      
+      prstg.shares <- as.data.frame(table(cur.edges$prstg))[as.data.frame(table(cur.edges$prstg))$Freq != 0, ]
+      prstg.shares$prop <- prstg.shares$Freq/sum(prstg.shares$Freq)
+      results$prstg_hmph[results$id == i] <- hhi(prstg.shares, "prop")
     }
   }
   
@@ -327,7 +332,8 @@ graph_discp_data <- function(nd) {
               cnst = mean(constraint), 
               discp_hmph = mean(discp_hmph), 
               pos_hmph = mean(pos_hmph), 
-              cntry_hmph = mean(cntry_hmph))
+              cntry_hmph = mean(cntry_hmph), 
+              prstg_hmph = mean(prstg_hmph))
   
   discp.groups$discp <- stringr::str_replace(discp.groups$discp, "[,]", ";")
   split <- discp.groups %>% 
@@ -341,10 +347,11 @@ graph_discp_data <- function(nd) {
               cnst = mean(cnst), 
               discp_hmph = mean(discp_hmph), 
               pos_hmph = mean(pos_hmph), 
-              cntry_hmph = mean(cntry_hmph))
+              cntry_hmph = mean(cntry_hmph),
+              prstg_hmph = mean(prstg_hmph))
   
   split %>%
-    gather(key, value, dg:eigen, discp_hmph:cntry_hmph) %>%
+    gather(key, value, dg, eigen, discp_hmph:prstg_hmph) %>%
     ggplot(aes(x = DISCP, y = value)) +
     geom_col() +
     coord_flip() +
