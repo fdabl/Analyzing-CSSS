@@ -1,11 +1,11 @@
 ---
 title: "csss_historic"
-author: "Kyle Furlong"
+author: "Kyle Furlong, Emily Coco, Dakota Murray"
 date: "6/19/2019"
 output: html_document
 ---
 
-```{r, warning=FALSE, message = FALSE}
+```{r, warning=FALSE, message = FALSE, echo=FALSE}
 library(DiagrammeR)
 library(dplyr)
 library(tidyr)
@@ -15,7 +15,7 @@ require(data.table)
 theme_set(theme_bw())
 ```
 
-```{r read_data}
+```{r read_data, echo=FALSE}
 all <- read.csv("data/csss-all.csv")
 dakota <- read.csv("data/csss-dakota.csv")
 emily <- read.csv("data/csss-emily.csv")
@@ -31,7 +31,7 @@ no.2011 <- clean_all %>%
   arrange(iteration)
 ```
 
-```{r}
+```{r, echo=FALSE}
 generate_csss_network_df <- function(df, iter){
   partic.df <- df %>%
     filter(iteration == as.character(iter)) %>%
@@ -88,16 +88,16 @@ graph_network <- function(graph_code) {
   render_graph(graph_code)
 }
 
-graph_network(generate_csss_network_df(all, iter = "2014.Santa Fe"))
+#graph_network(generate_csss_network_df(all, iter = "2014.Santa Fe"))
 
 
-generate_csss_network_df(all, iter = "2014.Santa Fe") %>%
-  get_node_df()
+#generate_csss_network_df(all, iter = "2014.Santa Fe") %>%
+ # get_node_df()
 
-graph_network(all.graphs)
+#graph_network(all.graphs[[1]])
 ```
 
-```{r university network}
+```{r university network, echo=FALSE}
 generate_university_network_df <- function(df, year = NA, colorByContinent = FALSE){
   if (!is.na(year)){
     df <- filter(df, Year == year)
@@ -184,12 +184,15 @@ generate_university_network_df <- function(df, year = NA, colorByContinent = FAL
       attr_type = "graph")
   return(graph)
 }
+```
+
+```{r graph_viz}
 
 render_graph(generate_university_network_df(all, year = 2017, colorByContinent = TRUE))
 
 render_graph(generate_university_network_df(all, year = 2010, colorByContinent = TRUE))
-```
 
+```
 
 
 ```{r fig.height= 12, fig.width= 12}
@@ -203,7 +206,7 @@ generate_all_graphs <- function(df) {
 all.graphs <- generate_all_graphs(no.2011)
 ```
 
-```{r graph_functions, message=FALSE}
+```{r graph_functions, message=FALSE, echo=FALSE}
 #averages for entire network by year
 graph_measures <- function(graph) {
   nd <- get_node_df(graph)
@@ -229,43 +232,11 @@ yearly_compare <- function(graphs) {
   }
   return(compile)
 }
-yearly.compare <- yearly_compare(all.graphs)
-avdg <- ggplot(data = yearly.compare) +
-  geom_col(mapping = aes(x = graph, y = avg_degree)) +
-  coord_flip() +
-  labs(y = "Average Degree", x = "Year and Location")
-diam <- ggplot(data = yearly.compare) +
-  geom_col(mapping = aes(x = graph, y = max_ecct)) +
-  coord_flip() +
-  labs(y = "Diameter", x = "Year and Location")
-path <- ggplot(data = yearly.compare) +
-  geom_col(mapping = aes(x = graph, y = avg_path)) +
-  coord_flip() +
-  labs(y = "Average Path Length", x = "Year and Location")
-cons <- ggplot(data = yearly.compare) +
-  geom_col(mapping = aes(x = graph, y = avg_const)) +
-  coord_flip() +
-  labs(y = "Average Constraint", x = "Year and Location")
-cowplot::plot_grid(avdg, diam, path, cons)
-#degree distribution
 
-palette <- palette(rainbow(17))
-dd.plot <- ggplot()
-
-data <- rbindlist(lapply(1:length(all.graphs), function(x) { 
-    df <- get_degree_distribution(all.graphs[[x]]) 
-    df$network_id <- as.factor(x)
-    return(df)
-  } 
-))
-
-data %>%
-  ggplot(aes(x = degree, y = total_degree_dist, color = network_id)) +
-  geom_line()
 
 ```
 
-```{r community_detection_functions, message=FALSE}
+```{r community_detection_functions, message=FALSE, echo=FALSE, eval=FALSE}
 #community detection comparison
 compare_communities <- function(graph) {
   gn.com <- get_cmty_edge_btwns(graph)
@@ -297,7 +268,7 @@ wt.graph <- create_group_graph(all.graphs[[2]], detection = "wt")
 #
 ```
 
-```{r node_based_analysis, warning=FALSE}
+```{r node_based_analysis, warning=FALSE, echo=FALSE}
 #node-measures
 node_measures <- function(graph) {
   nodes <- get_node_df(graph)
@@ -380,19 +351,46 @@ graph_discp_data <- function(nd) {
     facet_wrap(~key, scale = "free_x") +
     labs(title = nd$year[1])
 }
-
-#missing the first 4 data sets currently due to lack of discipline information in current dataset
-for(i in 5:length(node.data)) {
-  print(graph_discp_data(node.data[[i]]))
-}
-
-
-# node.data %>%
-#   gather(key, value, total_degree, betweenness, eigen_centrality, discp_hmph, pos_hmph, cntry_hmph) %>%
-#   ggplot(aes(x = value)) +
-#   geom_histogram() +
-#   facet_wrap(~key, scale = "free_x")
 ```
 
 
+```{r visualizations}
+yearly.compare <- yearly_compare(all.graphs)
+avdg <- ggplot(data = yearly.compare) +
+  geom_col(mapping = aes(x = graph, y = avg_degree)) +
+  coord_flip() +
+  labs(y = "Average Degree", x = "Year and Location")
+diam <- ggplot(data = yearly.compare) +
+  geom_col(mapping = aes(x = graph, y = max_ecct)) +
+  coord_flip() +
+  labs(y = "Diameter", x = "Year and Location")
+path <- ggplot(data = yearly.compare) +
+  geom_col(mapping = aes(x = graph, y = avg_path)) +
+  coord_flip() +
+  labs(y = "Average Path Length", x = "Year and Location")
+cons <- ggplot(data = yearly.compare) +
+  geom_col(mapping = aes(x = graph, y = avg_const)) +
+  coord_flip() +
+  labs(y = "Average Constraint", x = "Year and Location")
+cowplot::plot_grid(avdg, diam, path, cons)
+
+#degree distribution
+palette <- palette(rainbow(17))
+dd.plot <- ggplot()
+
+data <- rbindlist(lapply(1:length(all.graphs), function(x) { 
+    df <- get_degree_distribution(all.graphs[[x]]) 
+    df$network_id <- as.factor(x)
+    return(df)
+  } 
+))
+
+data %>%
+  ggplot(aes(x = degree, y = total_degree_dist, color = network_id)) +
+  geom_line()
+
+for(i in 1:length(node.data)) {
+  print(graph_discp_data(node.data[[i]]))
+}
+```
 
