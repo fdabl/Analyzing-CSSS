@@ -315,7 +315,7 @@ node_measures <- function(graph) {
   for(i in unique(nodes$id)) {
     cur.edges <- edges[edges$from == i,]
     cur.edges <- cur.edges[-1]
-    colnames(cur.edges) <- c("from", "id", "rel", "dir")
+    colnames(cur.edges) <- c("from", "id", "rel","color", "dir")
     cur.edges <- left_join(cur.edges, nodes, by = "id")
     if(!is.null(dim(cur.edges))) {
       discp.shares <- as.data.frame(table(cur.edges$discp))[as.data.frame(table(cur.edges$discp))$Freq != 0, ]
