@@ -26,19 +26,35 @@ get_sentiment <- function(text) {
 }
 
 
-datd <- read.csv('data/csss-dakota.csv', na.strings = '')
-datf <- read.csv('data/csss-fabian.csv', na.strings = '')
-datj <- read.csv('data/csss-jackie.csv', na.strings = '')
-date <- read.csv('data/csss-emily.csv', na.strings = '')
-datk <- read.csv('data/csss-kyle.csv', na.strings = c('NA', 'NA1', 'NA2'))
-
+# datd <- read.csv('data/csss-dakota.csv', na.strings = '')
+# datf <- read.csv('data/csss-fabian.csv', na.strings = '')
+# datj <- read.csv('data/csss-jackie.csv', na.strings = '')
+# date <- read.csv('data/csss-emily.csv', na.strings = '')
+# datk <- read.csv('data/csss-kyle.csv', na.strings = c('NA', 'NA1', 'NA2'))
 
 # add sentiment of biography because ... why not?
-dat <- rbind(datf, date, datd, datk, datj) %>% 
+# dat <- rbind(datf, date, datd, datk, datj) %>% 
+#   mutate(
+#     Bio_sentiment = get_sentiment(as.character(Biography)),
+#     Iteration = interaction(Year, Location),
+#     Country_University = as.character(Country_University),
+#     Country_University = ifelse(
+#       Country_University %in% c('US', 'USA', 'United States'), 'USA', Country_University
+#     )
+#   )
+
+dat <- read.csv('data/csss-all.csv', na.strings = '') %>% 
   mutate(
-    bio_sentiment = get_sentiment(as.character(Biography)),
-    iteration = interaction(Year, Location)
+    Bio_sentiment = get_sentiment(as.character(Biography)),
+    Iteration = interaction(Year, Location),
+    Country_University = as.character(Country_University),
+    Country_University = ifelse(
+      Country_University %in% c('US', 'USA', 'United States'), 'USA', Country_University
+    )
   )
+  
+
+
 ```
 
 
@@ -59,7 +75,7 @@ dat_avg <- dat %>%
     prop_PhD = mean(Position == 'Student', na.rm = TRUE), # this overcounts; fix!
     prop_postdoc = mean(Position == 'PostDoc', na.rm = TRUE),
     prop_industry = mean(Position == 'Industry', na.rm = TRUE),
-    avg_sentiment = mean(bio_sentiment, na.rm = TRUE)
+    avg_sentiment = mean(Bio_sentiment, na.rm = TRUE)
   )
 
 tab_names <- c(
@@ -76,20 +92,26 @@ We need to be careful since some people can come from more than one discipline.
 ```{r}
 library('stringr')
 
-dat_disciplines <- c()
-iterations <- unique(dat$iteration)
-
-for (school in iterations) {
-  disciplines <- str_split(filter(dat, iteration == school)$Discipline_isced, ';|,', simplify = TRUE)
-  disciplines <- str_to_title(str_trim(disciplines))
-  disciplines <- disciplines[disciplines != '']
+create_disciplines_dat <- function(dat) {
+  dat_disciplines <- c()
+  iterations <- unique(dat$Iteration)
   
-  if (!all(is.na(disciplines))) {
-    tab <- table(disciplines)
-    d <- cbind(school, data.frame(tab), as.numeric(tab) / sum(as.numeric(tab)))
-    dat_disciplines <- rbind(dat_disciplines, d)
+  for (school in iterations) {
+    disciplines <- str_split(filter(dat, Iteration == school)$Discipline_isced, ';|,', simplify = TRUE)
+    disciplines <- str_to_title(str_trim(disciplines))
+    disciplines <- disciplines[disciplines != '']
+    
+    if (!all(is.na(disciplines))) {
+      tab <- table(disciplines)
+      d <- cbind(school, data.frame(tab), as.numeric(tab) / sum(as.numeric(tab)))
+      dat_disciplines <- rbind(dat_disciplines, d)
+    }
   }
+  
+  dat_disciplines
 }
+
+dat_disciplines <- create_disciplines_dat(dat)
 ```
 
 ```{r, fig.width = 10, fig.height = 14}
@@ -100,6 +122,63 @@ dat_disciplines$Disciplines <- factor(dat_disciplines$Disciplines, levels = sort
 
 ggplot(dat_disciplines, aes(x = Disciplines, y = Proportion)) +
   geom_bar(stat = 'identity') +
+  facet_wrap(~ Iteration) +
+  coord_flip() +
+  theme_bw() +
+  ylab('') +
+  theme(axis.text.x = element_text(angle = 90, size = 6))
+```
+
+## Country across Time
+```{r}
+euro.countries <- c(
+  "Austria", "Belgium", "Czech Republic", "Denmark", "Estonia", "France",
+  "Germany", "Hungary", "Iceland", "Ireland", "Italy", "Netherlands", "Norway",
+  "Poland", "Portugal", "Russia", "Serbia", "Serbia and Montenegro", "Slovenia",
+  "Spain", "Sweden", "Switzerland", "The Netherlands", "Turkey", "UK", "United Kingdom"
+)
+
+afri.countries <- c("Nigeria", "South Africa")
+asian.countries <- c(
+  "China", "India", "Iran", "Israel", "Japan", "Lebanon", "Hong Kong",
+  "Pakistan", "South Korea", "Singapore", "Signapore", "Philippines"
+)
+
+s.amer.countries <- c("Argentina", "Argentinia", "Brazil", "Colombia", "Columbia", "Chile", "Venezuela")
+n.amer.countries <- c("Canada", "Canda", "Costa Rica", "Guatemala", "Mexico", "United States", "US", "USA")
+
+get_continent <- function(country) {
+  if (country %in% euro.countries) {
+    res <- 'Europe'
+  } else if (country %in% afri.countries) {
+    res <- 'Africa'
+  } else if (country %in% asian.countries) {
+    res <- 'Asia'
+  } else if (country %in% s.amer.countries) {
+    res <- 'South America'
+  } else if (country %in% n.amer.countries) {
+    res <- 'North America'
+  } else if (country %in% 'Australia') {
+    res <- 'Australia'
+  } else if (country %in% 'New Zealand') {
+    res <- 'New Zealand'
+  } else {
+    res <- NA
+  }
+  
+  res
+}
+
+dat <- dat %>% 
+  mutate(
+    Continent_University = Vectorize(get_continent)(Country_University),
+    Continent_University = factor(
+      Continent_University, levels = sort(unique(Continent_University), decreasing = TRUE)
+    )
+  )
+
+ggplot(dat, aes(x = Continent_University)) +
+  geom_bar() +
   facet_wrap(~ Iteration) +
   coord_flip() +
   theme_bw() +
@@ -142,18 +221,101 @@ First, we rename the columns to have more concise names.
 
 ```{r}
 new_names <- c(
-  'Timestamp', 'Name', 'Year', 'Location', 'Discipline', 'Closeness_Projects',
-  'Communication_Difficulty', 'Input_Usefulness', 'CSSS_Influence', 'Published',
+  'Timestamp', 'Name', 'Year_Incorrect', 'Year', 'Location', 'Discipline', 'Discipline_isced',
+  'Closeness_Projects', 'Communication_Difficulty', 'Input_Usefulness', 'CSSS_Influence', 'Published',
   'Publishing_Difficulty', 'Continued_Collaboration', 'Interdisciplinary_Thoughts'
 )
+
+choose_first <- function(disciplines) {
+  short_disc <- str_split(disciplines, ';|,', simplify = TRUE)
+  short_disc[, 1]
+}
 
 dats <- read.csv('data/csss-survey.csv')
 colnames(dats) <- new_names
 dats <- dats %>% 
   mutate(
     Published = ifelse(Published == 'Yes', 1, 0),
-    Continued_Collaboration = ifelse(Continued_Collaboration == 'Yes', 1, 0)
+    Continued_Collaboration = ifelse(Continued_Collaboration == 'Yes', 1, 0),
+    Iteration = interaction(Year, Location),
+    First_Discipline = choose_first(Discipline_isced)
   )
+
+dats_disciplines <- create_disciplines_dat(dats)
+```
+
+## CSSS Influence on Discipline
+The figure below shows how strongly different disciplines have been influenced by the CSSS summer school. Note that I only take the first discipline of each person as an approximation. Regardless, it seems that the social and behavioural sciences, as well as the life sciences, are more influenced then the physical sciences.
+
+```{r}
+ggplot(filter(dats, First_Discipline != ''),
+       aes(x = First_Discipline, y = CSSS_Influence, fill = First_Discipline)) +
+  geom_boxplot() +
+  geom_point(position = 'jitter') +
+  theme_bw() +
+  ylab('Influence of CSSS') +
+  xlab('Discipline') +
+  theme(
+    axis.text.x = element_text(angle = 90, size = 12),
+    legend.position = 'None'
+  ) +
+  coord_flip()
+```
+
+We can make the same plots with the usefulness of input, continued collaboration, and communication difficulty.
+```{r}
+ggplot(filter(dats, First_Discipline != ''),
+       aes(x = First_Discipline, y = Input_Usefulness, fill = First_Discipline)) +
+  geom_boxplot() +
+  geom_point(position = 'jitter') +
+  theme_bw() +
+  ylab('Usefulness of Input') +
+  xlab('Discipline') +
+  theme(
+    axis.text.x = element_text(angle = 90, size = 12),
+    legend.position = 'None'
+  ) +
+  coord_flip()
+
+dat_col <- filter(dats, First_Discipline != '') %>%
+  group_by(First_Discipline) %>%
+  summarize(
+    mean_collaboration = mean(Continued_Collaboration),
+    sd_collaboration = sd(Continued_Collaboration)
+  )
+    
+
+# Violin plots to see the bimodality better
+ggplot(dat_col, aes(x = First_Discipline, y = mean_collaboration, color = First_Discipline)) +
+  geom_point() +
+  geom_errorbar(
+    aes(
+      ymin = ifelse(mean_collaboration - sd_collaboration < 0, 0, mean_collaboration - sd_collaboration),
+      ymax = ifelse(mean_collaboration + sd_collaboration > 1, 1, mean_collaboration + sd_collaboration)
+    )
+  ) +
+  theme_bw() +
+  ylab('% Continued Collaboration') +
+  xlab('Discipline') +
+  theme(
+    axis.text.x = element_text(angle = 90, size = 12),
+    legend.position = 'None'
+  ) +
+  coord_flip()
+
+
+ggplot(filter(dats, First_Discipline != ''),
+       aes(x = First_Discipline, y = Communication_Difficulty, fill = First_Discipline)) +
+  geom_boxplot() +
+  geom_point(position = 'jitter') +
+  theme_bw() +
+  ylab('Difficulty of Communication') +
+  xlab('Discipline') +
+  theme(
+    axis.text.x = element_text(angle = 90, size = 12),
+    legend.position = 'None'
+  ) +
+  coord_flip()
 ```
 
 ### Word cloud
