@@ -5,11 +5,12 @@ date: "6/19/2019"
 output: html_document
 ---
 
-```{r, warning=FALSE, message = FALSE, echo=FALSE}
+```{r, warning=TRUE, message = TRUE, echo=TRUE}
 library(DiagrammeR)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(grDevices)
 require(hhi)
 require(data.table)
 theme_set(theme_bw())
@@ -32,14 +33,34 @@ no.2011 <- clean_all %>%
 ```
 
 ```{r, echo=FALSE}
-generate_csss_network_df <- function(df, iter){
+
+generate_csss_network_df <- function(df, iter, colorByDisc = FALSE, colorEdges = FALSE){
+  
+  disc.col.pal <- c("Humanities" = "#771155", "Journalism and information" = "#AA4488", "Law" = "#CC99BB", "Social services" = "#114477", 
+                "#4477AA", "Arts" = "#77AADD", 
+                "Physical sciences" = "#117777", "Life sciences" = "#44AAAA", 
+                "#77CCCC", "Agriculture and forestry and fishery" = "#117744", "#44AA77", "Environmental protection" = "#88CCAA", 
+                "Computing" = "#777711", "Engineering and engineering trades" = "#AAAA44", 
+                "Mathematics and statistics" = "#DDDD77", "Architecture and building" = "#774411", "#AA7744", "Business and administration" = "#DDAA77",
+                "Social and behavioural sciences" =  "#771122", "#AA4455", 
+                "Health" = "#DD7788")
+  
   partic.df <- df %>%
     filter(iteration == as.character(iter)) %>%
-    select(Name:Location) %>%
+    select(Name, Discipline_isced, Nationality, Gender, Position, Country_University, Prestige, Location) %>%
     unique() %>%
     mutate(
       Name = as.factor(Name),
-      name.id = as.numeric(droplevels(Name)))
+      name.id = as.numeric(droplevels(Name))) %>%
+    separate(col = Discipline_isced, into = c("disc1", "disc2"), 
+             sep = "[;,]", extra = "drop", remove = FALSE, fill = "right")
+  
+  partic.df$disc.color <- disc.col.pal[partic.df$disc1]
+  partic.df$disc.color[is.na(partic.df$disc.color)] <- "#888888"
+  
+  if (!colorByDisc){
+    partic.df$disc.color <- "aqua"
+  }
   
   edge.df.temp <- df %>%
     filter(iteration == iter) %>%
@@ -59,17 +80,26 @@ generate_csss_network_df <- function(df, iter){
     mutate(name.link = ifelse(name.id1<name.id2, paste(name.id1, name.id2, sep = "_"), paste(name.id2, name.id1, sep = "_"))) %>%
     select(name.link) %>%
     unique() %>%
-    left_join(edge.df.temp, by = "name.link")
+    left_join(edge.df.temp, by = "name.link") %>%
+    separate(col = Topic_isced, into = c("topic.disc1", "topic.disc2"), 
+             sep = "[;,]", extra = "drop", remove = FALSE, fill = "right")
+  
+  edge.df$edge.color <- disc.col.pal[edge.df$topic.disc1]
+  edge.df$edge.color[is.na(edge.df$edge.color)] <- "#888888"
+  
+  if (!colorEdges){
+    edge.df$edge.color <- "#888888"
+  }
   
   nodes.df <- create_node_df(
     n = nrow(partic.df),
     nodes = partic.df$name.id,
     label = partic.df$Name,
-    color = "red", 
+    fillcolor = partic.df$disc.color,
     year = as.character(iter),
     discp = partic.df$Discipline_isced, 
     nat = partic.df$Nationality, 
-    pos = partic.df$Position, 
+    pos.var = partic.df$Position, 
     cntry = partic.df$Country_University, 
     prstg = partic.df$Prestige
   )
@@ -77,6 +107,7 @@ generate_csss_network_df <- function(df, iter){
   edges.df <- create_edge_df(
     from = edge.df$name.id1,
     to = edge.df$name.id2,
+    color = edge.df$edge.color,
     dir = rep("none", length(edge.df$name.id1)))
   
   graph <- create_graph(nodes_df = nodes.df, 
@@ -86,17 +117,13 @@ generate_csss_network_df <- function(df, iter){
 }
 
 graph_network <- function(graph_code) {
-  render_graph(graph_code)
+  render_graph(graph_code, layout = "nicely")
 }
 
-#graph_network(generate_csss_network_df(all, iter = "2014.Santa Fe"))
+graph_network(generate_csss_network_df(df = clean_all, iter = "2018.Santa Fe", colorByDisc = TRUE, colorEdges = TRUE))
 
-
-#generate_csss_network_df(all, iter = "2014.Santa Fe") %>%
- # get_node_df()
-
-#graph_network(all.graphs[[1]])
 ```
+
 
 ```{r university network, echo=FALSE}
 generate_university_network_df <- function(df, year = NA, colorByContinent = FALSE){
@@ -295,7 +322,7 @@ node_measures <- function(graph) {
       discp.shares$prop <- discp.shares$Freq/sum(discp.shares$Freq)
       results$discp_hmph[results$id == i] <- hhi(discp.shares, "prop")
       
-      pos.shares <- as.data.frame(table(cur.edges$pos))[as.data.frame(table(cur.edges$pos))$Freq != 0, ]
+      pos.shares <- as.data.frame(table(cur.edges$pos.var))[as.data.frame(table(cur.edges$pos.var))$Freq != 0, ]
       pos.shares$prop <- pos.shares$Freq/sum(pos.shares$Freq)
       results$pos_hmph[results$id == i] <- hhi(pos.shares, "prop")
       
