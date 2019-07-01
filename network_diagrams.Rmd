@@ -13,6 +13,8 @@ library(ggplot2)
 library(grDevices)
 require(hhi)
 require(data.table)
+library(networkD3)
+library(extrafont)
 theme_set(theme_bw())
 ```
 
@@ -34,7 +36,7 @@ no.2011 <- clean_all %>%
 
 ```{r, echo=FALSE}
 
-generate_csss_network_df <- function(df, iter, colorByDisc = FALSE, colorEdges = FALSE){
+generate_csss_network_df <- function(df, iter, colorByDisc = FALSE, colorEdges = FALSE, hideNames = FALSE){
   
   disc.col.pal <- c("Humanities" = "#771155", "Journalism and information" = "#AA4488", "Law" = "#CC99BB", "Social services" = "#114477", 
                 "#4477AA", "Arts" = "#77AADD", 
@@ -94,7 +96,8 @@ generate_csss_network_df <- function(df, iter, colorByDisc = FALSE, colorEdges =
   nodes.df <- create_node_df(
     n = nrow(partic.df),
     nodes = partic.df$name.id,
-    label = partic.df$Name,
+    label = ifelse(hideNames, "", partic.df$Name),
+    tooltip = partic.df$Name,
     fillcolor = partic.df$disc.color,
     year = as.character(iter),
     discp = partic.df$Discipline_isced, 
@@ -120,7 +123,68 @@ graph_network <- function(graph_code) {
   render_graph(graph_code, layout = "nicely")
 }
 
-graph_network(generate_csss_network_df(df = clean_all, iter = "2018.Santa Fe", colorByDisc = TRUE, colorEdges = TRUE))
+graph_network(generate_csss_network_df(df = clean_all, iter = "2018.Santa Fe", colorByDisc = TRUE, colorEdges = TRUE, hideNames = TRUE))
+
+```
+
+```{r degree dist plt, echo=FALSE}
+
+degree.dat <- no.2011 %>%
+    #filter(iteration == iter) %>%
+    select(Title, name1 = Name, disc1 = Discipline_isced, Year) %>%
+    left_join(clean_all, by = c("Title", "Year")) %>%
+    filter(name1 != Name, name1 != "") %>%
+    select(Title, Topic_isced, name1, disc1, name2 = Name, disc2 = Discipline, Year) %>%
+  group_by(name1, disc1, Year) %>%
+  summarise(n.links = n()) %>%
+  ungroup() %>%
+  group_by(n.links) %>%
+  mutate(link.freq = n()) %>%
+  ungroup() %>%
+  mutate(prop.link.freq = link.freq/n(),
+         micro.rank = rank(link.freq, ties.method = "max"))
+
+ggplot(data = degree.dat, aes(x = n.links)) + geom_histogram() + theme_minimal()
+
+degree.plt <- degree.dat %>%
+  select(n.links, link.freq, prop.link.freq) %>%
+  unique() %>%
+  arrange(desc(n.links)) %>%
+  mutate(link.rank = rank(link.freq, ties.method = "first"),
+         link.rank.rev = n()-link.rank) 
+
+ggplot(data = degree.plt, aes(x = n.links, y = prop.link.freq)) + 
+  geom_col() + theme_minimal() +
+  labs(x = "Degree", y = "P(X)") + 
+  theme_minimal() +
+  scale_y_continuous(labels = scales::percent, breaks = seq(0, 0.2, 0.05)) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        text = element_text(family = "Segoe UI Light"))
+
+```
+
+
+```{r}
+
+ggplot(data = degree.plt, aes(x = link.rank, y = n.links)) + 
+  geom_point() +
+  theme_minimal() +
+  labs(x = "Rank", y = "Degree")
+
+ggplot(data = degree.plt, aes(x = link.rank, y = n.links)) + 
+  geom_point() +
+  theme_minimal() +
+  labs(x = "Rank", y = "Degree") + 
+  stat_smooth(method = "lm", se = FALSE)
+  
+
+
+ggplot(data = degree.dat, aes(x = log10(micro.rank), y = n.links)) + 
+  geom_point() +
+  theme_minimal() +
+  labs(x = "Log Rank", y = "Degree") + 
+  stat_smooth(method = "lm", se = FALSE)
 
 ```
 
