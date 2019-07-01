@@ -221,4 +221,6 @@ as.data.frame(distribution) %>%
     title = "2018 Null Model vs. Actual Disciplinary Homophily",
     x = "Average Disciplinary Node Homophily") +
   geom_text(x = 0.45, y = 31, label = "actual")
+
+ggsave("~/Desktop/csss_null_model_discipline.png", height = 9, width = 9)
 ```
