@@ -442,10 +442,11 @@ for(i in 3:length(node.data)) {
 }
 
 nd <- nodes %>%
-  filter(discp %in% c("Computing", "Mathematics and statistics", "Physical sciences", "Life sciences", "Social and behavioural science")) %>%
+  filter(discp %in% c("Computing", "Mathematics and statistics", "Physical sciences", "Life sciences", "Social and behavioural science", "Engineering and engineering trades")) %>%
   group_by(discp, year) %>%
   summarize(discp_hmph = mean(discp_hmph), 
-            eigen = mean(eigen_centrality))
+            eigen = mean(eigen_centrality), 
+            n = n())
 
 ggsave(filename = "figures/discp_hmph.png", plot = ggplot(data = nd) +
   geom_boxplot(mapping = aes(y = discp_hmph, x = discp)) +
@@ -459,5 +460,10 @@ ggsave(filename = "figures/eigen_centrality.png", plot = ggplot(data = nd) +
   geom_point(mapping = aes(y = eigen, x = discp, color = year)) +
   coord_flip() +
   labs(x = "Discipline", y = "Eigenvector Centrality"), width = 900, height = 450, units = "mm", scale = 0.25)
+
+#attempting to do change over time, but it's stupid
+# comp <- nodes %>% filter(discp == "Physical sciences")
+# ggplot(data = comp) +
+#   geom_boxplot(mapping = aes(x = year, y = discp_hmph))
 ```
 
