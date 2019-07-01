@@ -1,0 +1,224 @@
+---
+title: "R Notebook"
+author: "Dakota Murray"
+output: html_notebook
+---
+
+```{r}
+library(DiagrammeR)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(grDevices)
+require(hhi)
+require(data.table)
+theme_set(theme_bw())
+```
+
+
+```{r read_data, echo=FALSE}
+clean_all <- read.csv("~/Documents/Analyzing-CSSS/data/cleaned_csss-all.csv")
+clean_all$iteration <- paste(clean_all$Year, clean_all$Location, sep = ".")
+
+no.2011 <- clean_all %>%
+  filter(Year != 2011) %>%
+  arrange(iteration)
+
+df <- no.2011
+```
+
+So the first thing that we will do is to generate a node file.
+```{r}
+build_node_dataframe <- function(df, iter) {
+  disc.col.pal <- c(
+                  "Humanities" = "#771155", 
+                  "Journalism and information" = "#AA4488", 
+                  "Law" = "#CC99BB", 
+                  "Social services" = "#114477", 
+                  "#4477AA", "Arts" = "#77AADD", 
+                  "Physical sciences" = "#117777", "Life sciences" = "#44AAAA", 
+                  "#77CCCC", "Agriculture and forestry and fishery" = "#117744", "#44AA77", "Environmental protection" = "#88CCAA", 
+                  "Computing" = "#777711", "Engineering and engineering trades" = "#AAAA44", 
+                  "Mathematics and statistics" = "#DDDD77", "Architecture and building" = "#774411", "#AA7744", "Business and administration" = "#DDAA77",
+                  "Social and behavioural sciences" =  "#771122", "#AA4455", 
+                  "Health" = "#DD7788"
+  ) # end disc.col.pal
+    
+  partic.df <- df %>%
+    filter(iteration == as.character(iter)) %>%
+    select(Name, Discipline_isced, Nationality, Gender, Position, Country_University, Prestige, Location) %>%
+    unique() %>%
+    mutate(
+      Name = as.factor(Name),
+      name.id = as.numeric(droplevels(Name))) %>%
+    separate(col = Discipline_isced, into = c("disc1", "disc2"), 
+             sep = "[;,]", extra = "drop", remove = FALSE, fill = "right")
+  
+  partic.df$disc.color <- disc.col.pal[partic.df$disc1]
+  partic.df$disc.color[is.na(partic.df$disc.color)] <- "#888888"
+  
+  node.df <- create_node_df(
+      n = nrow(partic.df),
+      node_id = partic.df$name.id,
+      label = partic.df$Name,
+      fillcolor = partic.df$disc.color,
+      year = as.character(iter),
+      discp = partic.df$Discipline_isced, 
+      nat = partic.df$Nationality, 
+      pos.var = partic.df$Position, 
+      cntry = partic.df$Country_University, 
+      prstg = partic.df$Prestige,
+      gender = partic.df$Gender
+    )
+  
+  return(node.df)
+}
+
+build_edge_dataframe <- function(df, iter) {
+  edge.df.temp <- df %>%
+    # Filter by the year
+    filter(iteration == iter) %>%
+    # Select only project and person info
+    select(Title, name1 = Name, Year) %>%
+    # Re-join the original dataframe
+    left_join(df, by = c("Title", "Year")) %>%
+    # Remove duplicate people
+    filter(name1 != Name) %>%
+    # Select all relevant info
+    select(Title, name1, name2 = Name, Topic, Topic_isced, Year) %>%
+    arrange(name1) %>%
+    mutate(name1 = as.factor(name1),
+           name2 = as.factor(name2),
+           name.id1 = as.numeric(droplevels(name1)),
+           name.id2 = as.numeric(droplevels(name2)),
+           name.link = paste(name.id1, name.id2, sep = "_"))
+  
+  edge.df <- edge.df.temp %>%
+    select(name.id1, name.id2) %>%
+    mutate(name.link = ifelse(name.id1<name.id2, paste(name.id1, name.id2, sep = "_"), paste(name.id2, name.id1, sep = "_"))) %>%
+    select(name.link) %>%
+    unique() %>%
+    left_join(edge.df.temp, by = "name.link") %>%
+    separate(col = Topic_isced, into = c("topic.disc1", "topic.disc2"), 
+             sep = "[;,]", extra = "drop", remove = FALSE, fill = "right")
+  
+  edge.df$edge.color <- disc.col.pal[edge.df$topic.disc1]
+  edge.df$edge.color[is.na(edge.df$edge.color)] <- "#888888"
+  
+  edge.df <- create_edge_df(
+    from = edge.df$name.id1,
+    to = edge.df$name.id2,
+    color = edge.df$edge.color,
+    dir = rep("none", length(edge.df$name.id1)))
+  
+  return(edge.df)
+}
+
+node.df <- build_node_dataframe(df, iter = "2013.Santa Fe")
+edge.df <- build_edge_dataframe(df, iter = "2013.Santa Fe")
+head(node.df)
+head(edge.df)
+
+graph <- create_graph(nodes_df = node.df, 
+                      edges_df = edge.df)
+```
+
+```{r}
+#node-measures
+node_measures <- function(graph) {
+  nodes <- DiagrammeR::get_node_df(graph)
+  results <- nodes %>%
+    left_join(get_degree_total(graph), by = "id") %>%
+    left_join(get_betweenness(graph), by = "id") %>%
+    left_join(get_eigen_centrality(graph), by = "id") %>%
+    left_join(get_constraint(graph), by = "id")
+  
+  results$discp_hmph <- NULL
+  results$pos_hmph <- NULL
+  results$cntry_hmph <- NULL
+  
+  #attempting to get homophily measures --need to add gender homophily, and prestige homophily
+  edges <- DiagrammeR::get_edge_df(graph)
+  for(i in unique(nodes$id)) {
+    cur.edges <- edges[edges$from == i,]
+    cur.edges <- cur.edges[-1]
+    colnames(cur.edges) <- c("from", "id", "rel", "color", "dir")
+    cur.edges <- left_join(cur.edges, nodes, by = "id")
+    if(!is.null(dim(cur.edges))) {
+      discp.shares <- as.data.frame(table(cur.edges$discp))[as.data.frame(table(cur.edges$discp))$Freq != 0, ]
+      discp.shares$prop <- discp.shares$Freq/sum(discp.shares$Freq)
+      results$discp_hmph[results$id == i] <- hhi(discp.shares, "prop")
+      
+      pos.shares <- as.data.frame(table(cur.edges$pos.var))[as.data.frame(table(cur.edges$pos.var))$Freq != 0, ]
+      pos.shares$prop <- pos.shares$Freq/sum(pos.shares$Freq)
+      results$pos_hmph[results$id == i] <- hhi(pos.shares, "prop")
+      
+      cntry.shares <- as.data.frame(table(cur.edges$cntry))[as.data.frame(table(cur.edges$cntry))$Freq != 0, ]
+      cntry.shares$prop <- cntry.shares$Freq/sum(cntry.shares$Freq)
+      results$cntry_hmph[results$id == i] <- hhi(cntry.shares, "prop")
+      
+      prstg.shares <- as.data.frame(table(cur.edges$prstg))[as.data.frame(table(cur.edges$prstg))$Freq != 0, ]
+      prstg.shares$prop <- prstg.shares$Freq/sum(prstg.shares$Freq)
+      results$prstg_hmph[results$id == i] <- hhi(prstg.shares, "prop")
+      
+      gen.shares <- as.data.frame(table(cur.edges$gender))[as.data.frame(table(cur.edges$gender))$Freq != 0, ]
+      gen.shares$prop <- gen.shares$Freq/sum(gen.shares$Freq)
+      results$gender_hmph[results$id == i] <- hhi(gen.shares, "prop")
+    }
+  }
+  
+  return(results)
+}
+
+graph.with.measures <- node_measures(graph)
+
+mean(graph.with.measures$gender_hmph)
+#graph.with.measures
+```
+
+First, lets get the actual gender scores for each year/place of the summer school
+```{r message=FALSE, warning=FALSE}
+iters <- unique(no.2011$iteration)
+actual_discp_hmph <- sapply(iters, function(y) {
+  node.df <- build_node_dataframe(df, iter = y)
+  edge.df <- build_edge_dataframe(df, iter = y)
+  graph <- create_graph(nodes_df = node.df, 
+                      edges_df = edge.df)
+
+  measures <- node_measures(graph)
+  
+  return(mean(measures$discp_hmph))
+})
+
+actual_df <- data.frame(year = iters, discp_hmph = actual_discp_hmph)
+```
+
+
+Now lets try generating a distribution of random values
+```{r message=FALSE, warning=FALSE}
+y <- "2018.Santa Fe"
+distribution <- sapply(1:500, function(x) {
+  node.df <- build_node_dataframe(df, iter = y)
+  node.df$discp <- factor(sample(node.df$discp))
+  edge.df <- build_edge_dataframe(df, iter = y)
+  graph <- create_graph(
+                      nodes_df = node.df, 
+                      edges_df = edge.df)
+
+  measures <- node_measures(graph)
+  
+  return(mean(measures$discp_hmph))
+})
+
+distribution = matrix(distribution, ncol = 1)
+
+as.data.frame(distribution) %>%
+  ggplot(aes(x = V1)) +
+  geom_histogram(bins = 40, alpha = 0.8, color = "black") +
+  geom_vline(xintercept = 0.445, color = "dodgerblue", size = 1.5, alpha = 0.8) +
+  theme_minimal() +
+  labs(
+    title = "2018 Null Model vs. Actual Disciplinary Homophily",
+    x = "Average Disciplinary Node Homophily") +
+  geom_text(x = 0.45, y = 31, label = "actual")
+```
