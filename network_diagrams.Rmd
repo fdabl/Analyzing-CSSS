@@ -104,7 +104,8 @@ generate_csss_network_df <- function(df, iter, colorByDisc = FALSE, colorEdges =
     nat = partic.df$Nationality, 
     pos.var = partic.df$Position, 
     cntry = partic.df$Country_University, 
-    prstg = partic.df$Prestige
+    prstg = partic.df$Prestige,
+    gender = partic.df$Gender
   )
   
   edges.df <- create_edge_df(
@@ -379,7 +380,7 @@ node_measures <- function(graph) {
   for(i in unique(nodes$id)) {
     cur.edges <- edges[edges$from == i,]
     cur.edges <- cur.edges[-1]
-    colnames(cur.edges) <- c("from", "id", "rel", "dir")
+    colnames(cur.edges) <- c("from", "id", "rel","color", "dir")
     cur.edges <- left_join(cur.edges, nodes, by = "id")
     if(!is.null(dim(cur.edges))) {
       discp.shares <- as.data.frame(table(cur.edges$discp))[as.data.frame(table(cur.edges$discp))$Freq != 0, ]
@@ -397,6 +398,10 @@ node_measures <- function(graph) {
       prstg.shares <- as.data.frame(table(cur.edges$prstg))[as.data.frame(table(cur.edges$prstg))$Freq != 0, ]
       prstg.shares$prop <- prstg.shares$Freq/sum(prstg.shares$Freq)
       results$prstg_hmph[results$id == i] <- hhi(prstg.shares, "prop")
+      
+      gen.shares <- as.data.frame(table(cur.edges$gender))[as.data.frame(table(cur.edges$gender))$Freq != 0, ]
+      gen.shares$prop <- gen.shares$Freq/sum(gen.shares$Freq)
+      results$gender_hmph[results$id == i] <- hhi(gen.shares, "prop")
     }
   }
   
@@ -424,7 +429,8 @@ graph_discp_data <- function(nd) {
               discp_hmph = mean(discp_hmph), 
               pos_hmph = mean(pos_hmph), 
               cntry_hmph = mean(cntry_hmph), 
-              prstg_hmph = mean(prstg_hmph))
+              prstg_hmph = mean(prstg_hmph), 
+              gender_hmph = mean(gender_hmph))
   
   discp.groups$discp <- stringr::str_replace(discp.groups$discp, "[,]", ";")
   split <- discp.groups %>% 
@@ -439,10 +445,11 @@ graph_discp_data <- function(nd) {
               discp_hmph = mean(discp_hmph), 
               pos_hmph = mean(pos_hmph), 
               cntry_hmph = mean(cntry_hmph),
-              prstg_hmph = mean(prstg_hmph))
+              prstg_hmph = mean(prstg_hmph), 
+              gender_hmph = mean(gender_hmph))
   
   split %>%
-    gather(key, value, dg, eigen, discp_hmph:prstg_hmph) %>%
+    gather(key, value, dg, eigen, discp_hmph, cntry_hmph:gender_hmph) %>%
     ggplot(aes(x = DISCP, y = value)) +
     geom_col() +
     coord_flip() +
@@ -487,8 +494,34 @@ data %>%
   ggplot(aes(x = degree, y = total_degree_dist, color = network_id)) +
   geom_line()
 
-for(i in 1:length(node.data)) {
+for(i in 2:length(node.data)) {
   print(graph_discp_data(node.data[[i]]))
 }
+```
+
+```{r prez_visualizations, evaluate = false, echo = false}
+nodes <- node.data[[2]]
+for(i in 3:length(node.data)) {
+  nodes <- rbind(nodes, node.data[[i]])
+}
+
+nd <- nodes %>%
+  filter(discp %in% c("Computing", "Mathematics and statistics", "Physical sciences", "Life sciences", "Social and behavioural science")) %>%
+  group_by(discp, year) %>%
+  summarize(discp_hmph = mean(discp_hmph), 
+            eigen = mean(eigen_centrality))
+
+ggsave(filename = "figures/discp_hmph.png", plot = ggplot(data = nd) +
+  geom_boxplot(mapping = aes(y = discp_hmph, x = discp)) +
+  geom_point(mapping = aes(y = discp_hmph, x = discp, color = year)) +
+  coord_flip() +
+  labs(x = "Discipline", y = "Discipline HHI"), width = 900, height = 450, units = "mm", scale = 0.25)
+
+
+ggsave(filename = "figures/eigen_centrality.png", plot = ggplot(data = nd) +
+  geom_boxplot(mapping = aes(y = eigen, x = discp)) +
+  geom_point(mapping = aes(y = eigen, x = discp, color = year)) +
+  coord_flip() +
+  labs(x = "Discipline", y = "Eigenvector Centrality"), width = 900, height = 450, units = "mm", scale = 0.25)
 ```
 
