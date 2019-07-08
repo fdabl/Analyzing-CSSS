@@ -446,6 +446,7 @@ nd <- nodes %>%
   group_by(discp, year) %>%
   summarize(discp_hmph = mean(discp_hmph), 
             eigen = mean(eigen_centrality), 
+            cntry_hmph = mean(cntry_hmph),
             n = n())
 
 ggsave(filename = "figures/discp_hmph.png", plot = ggplot(data = nd) +
@@ -453,6 +454,13 @@ ggsave(filename = "figures/discp_hmph.png", plot = ggplot(data = nd) +
   geom_point(mapping = aes(y = discp_hmph, x = discp, color = year)) +
   coord_flip() +
   labs(x = "Discipline", y = "Discipline HHI"), width = 900, height = 450, units = "mm", scale = 0.25)
+
+ggsave(filename = "figures/cntry_hmph.png", plot = ggplot(data = nd) +
+  geom_boxplot(mapping = aes(y = cntry_hmph, x = discp)) +
+  geom_point(mapping = aes(y = cntry_hmph, x = discp, color = year)) +
+  coord_flip() +
+  labs(x = "Discipline", y = "Country HHI"), width = 900, height = 450, units = "mm", scale = 0.25)
+
 
 
 ggsave(filename = "figures/eigen_centrality.png", plot = ggplot(data = nd) +
