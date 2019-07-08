@@ -7,12 +7,20 @@ output: html_document
 
 ```{r, warning=TRUE, message = TRUE, echo=TRUE}
 library(DiagrammeR)
+library(DiagrammeRsvg)
+library(rsvg)
 library(dplyr)
 library(tidyr)
+library(stringr)
 library(ggplot2)
 library(grDevices)
 require(hhi)
 require(data.table)
+library(networkD3)
+library(webshot)
+library(rmarkdown)
+
+if (str_detect(getwd(), pattern = "krfurlong")){library(extrafont)}
 theme_set(theme_bw())
 ```
 
@@ -30,11 +38,18 @@ clean_all$iteration <- paste(clean_all$Year, clean_all$Location, sep = ".")
 no.2011 <- clean_all %>%
   filter(Year != 2011) %>%
   arrange(iteration)
+
+csss2018 <- clean_all %>%
+  filter(Year == 2018) %>%
+  select(Name, Discipline_isced) %>%
+  unique()
+
+levels(droplevels(csss2018$Discipline_isced))
 ```
 
 ```{r, echo=FALSE}
 
-generate_csss_network_df <- function(df, iter, colorByDisc = FALSE, colorEdges = FALSE){
+generate_csss_network_df <- function(df, iter, colorByDisc = FALSE, colorEdges = FALSE, hideNames = FALSE){
   
   disc.col.pal <- c("Humanities" = "#771155", "Journalism and information" = "#AA4488", "Law" = "#CC99BB", "Social services" = "#114477", 
                 "#4477AA", "Arts" = "#77AADD", 
@@ -42,7 +57,7 @@ generate_csss_network_df <- function(df, iter, colorByDisc = FALSE, colorEdges =
                 "#77CCCC", "Agriculture and forestry and fishery" = "#117744", "#44AA77", "Environmental protection" = "#88CCAA", 
                 "Computing" = "#777711", "Engineering and engineering trades" = "#AAAA44", 
                 "Mathematics and statistics" = "#DDDD77", "Architecture and building" = "#774411", "#AA7744", "Business and administration" = "#DDAA77",
-                "Social and behavioural sciences" =  "#771122", "#AA4455", 
+                "Social and behavioural sciences" =  "#771122", "Social and behavioural science" =  "#771122", "#AA4455", 
                 "Health" = "#DD7788")
   
   partic.df <- df %>%
@@ -50,10 +65,13 @@ generate_csss_network_df <- function(df, iter, colorByDisc = FALSE, colorEdges =
     select(Name, Discipline_isced, Nationality, Gender, Position, Country_University, Prestige, Location) %>%
     unique() %>%
     mutate(
+      Name = ifelse(is.na(Name), "NA", Name),
       Name = as.factor(Name),
       name.id = as.numeric(droplevels(Name))) %>%
     separate(col = Discipline_isced, into = c("disc1", "disc2"), 
-             sep = "[;,]", extra = "drop", remove = FALSE, fill = "right")
+             sep = "[;,]", extra = "drop", remove = FALSE, fill = "right") %>%
+    mutate(disc1 = trimws(disc1),
+           disc2= trimws(disc2))
   
   partic.df$disc.color <- disc.col.pal[partic.df$disc1]
   partic.df$disc.color[is.na(partic.df$disc.color)] <- "#888888"
@@ -94,8 +112,12 @@ generate_csss_network_df <- function(df, iter, colorByDisc = FALSE, colorEdges =
   nodes.df <- create_node_df(
     n = nrow(partic.df),
     nodes = partic.df$name.id,
-    label = partic.df$Name,
+    label = ifelse(hideNames, "", partic.df$Name),
+    fixedsize = TRUE,
+    tooltip = partic.df$Name,
     fillcolor = partic.df$disc.color,
+    height = 0.45,
+    width = 0.45,
     year = as.character(iter),
     discp = partic.df$Discipline_isced, 
     nat = partic.df$Nationality, 
@@ -117,11 +139,105 @@ generate_csss_network_df <- function(df, iter, colorByDisc = FALSE, colorEdges =
   return(graph)
 }
 
-graph_network <- function(graph_code) {
-  render_graph(graph_code, layout = "nicely")
+
+graph_network <- function(graph_code, save.location = NA) {
+  if (is.na(save.location)){
+    render_graph(graph_code, layout = "nicely")  
+  }else{
+    export_graph(graph_code, file_name = save.location, file_type = "png", width = 5.77, height = 5.22)
+  }
+  
 }
 
-graph_network(generate_csss_network_df(df = clean_all, iter = "2018.Santa Fe", colorByDisc = TRUE, colorEdges = TRUE))
+graph_network(generate_csss_network_df(df = clean_all, iter = "2011.Santa Fe", colorByDisc = TRUE, colorEdges = TRUE, hideNames = TRUE))
+
+#df <- clean_all
+get_node_df(generate_csss_network_df(df = clean_all, iter = "2018.Santa Fe", colorByDisc = TRUE, colorEdges = TRUE, hideNames = TRUE))
+```
+
+```{r ALL OF THE NETWORK PNGS, echo = FALSE}
+iter.list <- levels(as.factor(clean_all$iteration))
+filename.list <- paste0("csss_", str_replace(str_replace(iter.list, pattern = " ", ""), pattern = "\\.", replacement = "_"), "_nw.png")
+filebasepath <- "./img/"
+
+for (i in 2:length(iter.list)){
+  csss.graph <- graph_network(graph_code = generate_csss_network_df(df = clean_all, iter = paste0(iter.list[i]), 
+                                                                  colorByDisc = TRUE, colorEdges = TRUE, hideNames = TRUE))
+
+  rmd_name <- tempfile(fileext = ".Rmd")
+  cat("```{r echo=FALSE}\ncsss.graph\n```", file = rmd_name)
+  html_name <- tempfile(fileext = ".html")
+  render(rmd_name, output_format = "html_document", output_file = html_name)
+  
+  
+  webshot(html_name, file = paste0(filebasepath, filename.list[i]), 
+          selector = "body > div.container-fluid.main-container", )
+}
+
+```
+
+```{r degree dist plt, echo=FALSE}
+
+degree.dat <- clean_all %>%
+    #filter(iteration == iter) %>%
+    select(Title, name1 = Name, disc1 = Discipline_isced, Year) %>%
+    left_join(clean_all, by = c("Title", "Year")) %>%
+    filter(name1 != Name, name1 != "") %>%
+    select(Title, Topic_isced, name1, disc1, name2 = Name, disc2 = Discipline, Year) %>%
+  group_by(name1, disc1, Year) %>%
+  summarise(n.links = n()) %>%
+  ungroup() %>%
+  group_by(n.links, Year) %>%
+  mutate(link.freq = n()) %>%
+  ungroup() %>%
+  mutate(prop.link.freq = link.freq/n(),
+         micro.rank = rank(link.freq, ties.method = "max"))
+
+ggplot(data = degree.dat, aes(x = n.links)) + geom_histogram() + theme_minimal()
+
+degree.plt <- degree.dat %>%
+  select(n.links, link.freq, prop.link.freq, Year) %>%
+  unique() %>%
+  arrange(desc(n.links)) %>%
+  group_by(Year) %>%
+  mutate(link.rank = rank(link.freq, ties.method = "first"),
+         link.rank.rev = n()-link.rank) %>%
+  ungroup()
+
+deg.dist.plt <- ggplot(data = degree.plt, aes(x = n.links, y = prop.link.freq)) + 
+  geom_col() + theme_minimal() +
+  labs(x = "Degree", y = "P(X)") + 
+  theme_minimal() +
+  scale_y_continuous(labels = scales::percent, breaks = seq(0, 0.2, 0.05)) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        text = element_text(family = "Segoe UI Light", size = 16)) +
+  facet_wrap(~Year, nrow = 2)
+
+deg.dist.plt
+
+ggsave(plot = deg.dist.plt, filename = "img/deg_dist_plt.png", width = 14, height = 6)
+```
+
+
+```{r}
+
+ggplot(data = degree.plt, aes(x = link.rank, y = n.links)) + 
+  geom_point() +
+  theme_minimal() +
+  labs(x = "Rank", y = "Degree")
+
+ggplot(data = degree.plt, aes(x = link.rank, y = n.links)) + 
+  geom_point() +
+  theme_minimal() +
+  labs(x = "Rank", y = "Degree") + 
+  stat_smooth(method = "lm", se = FALSE)
+
+ggplot(data = degree.dat, aes(x = log10(micro.rank), y = n.links)) + 
+  geom_point() +
+  theme_minimal() +
+  labs(x = "Log Rank", y = "Degree") + 
+  stat_smooth(method = "lm", se = FALSE)
 
 ```
 
