@@ -426,36 +426,17 @@ node_measures <- function(graph) {
   results$discp_hmph <- NULL
   results$pos_hmph <- NULL
   results$cntry_hmph <- NULL
+  results$gen_hmph <- NULL
+  results$prstg_hmph <- NULL
   
   #attempting to get homophily measures --need to add gender homophily, and prestige homophily
   edges <- get_edge_df(graph)
-  for(i in unique(nodes$id)) {
-    cur.edges <- edges[edges$from == i,]
-    cur.edges <- cur.edges[-1]
-    colnames(cur.edges) <- c("from", "id", "rel","color", "dir")
-    cur.edges <- left_join(cur.edges, nodes, by = "id")
-    if(!is.null(dim(cur.edges))) {
-      discp.shares <- as.data.frame(table(cur.edges$discp))[as.data.frame(table(cur.edges$discp))$Freq != 0, ]
-      discp.shares$prop <- discp.shares$Freq/sum(discp.shares$Freq)
-      results$discp_hmph[results$id == i] <- hhi(discp.shares, "prop")
-      
-      pos.shares <- as.data.frame(table(cur.edges$pos.var))[as.data.frame(table(cur.edges$pos.var))$Freq != 0, ]
-      pos.shares$prop <- pos.shares$Freq/sum(pos.shares$Freq)
-      results$pos_hmph[results$id == i] <- hhi(pos.shares, "prop")
-      
-      cntry.shares <- as.data.frame(table(cur.edges$cntry))[as.data.frame(table(cur.edges$cntry))$Freq != 0, ]
-      cntry.shares$prop <- cntry.shares$Freq/sum(cntry.shares$Freq)
-      results$cntry_hmph[results$id == i] <- hhi(cntry.shares, "prop")
-      
-      prstg.shares <- as.data.frame(table(cur.edges$prstg))[as.data.frame(table(cur.edges$prstg))$Freq != 0, ]
-      prstg.shares$prop <- prstg.shares$Freq/sum(prstg.shares$Freq)
-      results$prstg_hmph[results$id == i] <- hhi(prstg.shares, "prop")
-      
-      gen.shares <- as.data.frame(table(cur.edges$gender))[as.data.frame(table(cur.edges$gender))$Freq != 0, ]
-      gen.shares$prop <- gen.shares$Freq/sum(gen.shares$Freq)
-      results$gender_hmph[results$id == i] <- hhi(gen.shares, "prop")
-    }
-  }
+  
+  results$discp_hmph <- get.hhi(nodes, edges, "discp")$hhi
+  results$pos_hmph <- get.ei(nodes, edges, "pos.var")$ei
+  results$cntry_hmph <- get.ei(nodes, edges, "cntry")$ei
+  results$gen_hmph <- get.per.sim(nodes, edges, "gender")$sim
+  results$prstg_hmph <- get.ei(nodes, edges, "prstg")$ei
   
   return(results)
 }
