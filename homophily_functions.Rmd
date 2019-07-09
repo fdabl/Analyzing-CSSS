@@ -23,11 +23,17 @@ library(rmarkdown)
 
 ```
 
-####HHI function
-0 is heterophilious
-1 is homophilious
+### Herfindahl-Hirschman Index (HHI)
+Sum of market shares of groups, where an increase in value indicates increasing concentration of alters in one large group while a decrease in value suggests a more equal distribution of alters among smaller groups
 
-sum of the market shares of groups
+##### Range
++ 0 is completely heterophilious
++ 1 is completely homophilious
+
+##### Function
+sum of the square(number of alters in given group/total alters) for all possible groups
+
+
 ```{r hhi}
 get.hhi <- function(nodes, edges, column) {
   results <- as.data.frame(unique(nodes$id))
@@ -49,11 +55,14 @@ get.hhi <- function(nodes, edges, column) {
 ```
 
 
-####Krackhardt and Stern E-I Index
--1 is homophilious
-1 is heterophilious
+### Krackhardt and Stern E-I Index
+Relative density of within-group connections compare to number of extra-group connections
 
-function:
+##### Range
++ -1 is completely homophilious
++ 1 is completely heterophilious
+
+##### Function
 number of ties in different groups - number of ties in same group/ number of total ties
 
 ```{r similarity}
@@ -77,3 +86,36 @@ get.ei <- function(nodes, edges, column) {
 }
 
 ```
+
+
+### Percent Similar
+Percentage of alters that share the same trait as ego
+
+##### Range
++ 0 is completely heterophilious
++ 1 is completely homophilious
+
+##### Function
+number of similar alters/total number of alters
+
+```{r per_sim}
+get.per.sim <- function(nodes, edges, column) {
+  results <- as.data.frame(unique(nodes$id))
+  results$sim <- 0
+  for(i in unique(nodes$id)) {
+    cur.edges <- edges[edges$from == i,]
+    cur.edges <- cur.edges[-1]
+    colnames(cur.edges) <- c("from", "id", "rel","color", "dir")
+    cur.edges <- left_join(cur.edges, nodes, by = "id")
+    
+    if(!is.null(dim(cur.edges))) {
+      check <- as.character(nodes[nodes$id == i, column])
+      num.same <- nrow(cur.edges[cur.edges[,column] == check,])
+      results$sim[i] <- num.same/nrow(cur.edges)
+    }
+  }
+  return(results)
+}
+```
+
+
