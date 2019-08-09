@@ -12,7 +12,6 @@ output:
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align = 'center')
 ```
 
-
 # Data Preparation
 ```{r}
 library('dplyr')
@@ -89,21 +88,28 @@ Note that the summer school of 2011 apparently had only one project in which eve
 
 ## Proportion of Females across Time
 ```{r}
+dat_avg <- dat_avg %>%
+  mutate(
+    Iteration = gsub("[.]", " ", Iteration)
+  )
 ggplot(filter(dat_avg, Iteration != '2005.Beijing'), aes(x = Iteration, y = prop_female)) +
-  geom_bar(stat = 'identity') +
+  geom_bar(stat = 'identity', fill = "orange", alpha = 0.8, color = "black") +
   coord_flip() +
-  theme_bw() +
+  theme_minimal() +
   ylab('% Women') +
   xlab('') +
   scale_y_continuous(limits = c(0, .6), breaks = scales::pretty_breaks(n = 10)) +
-  geom_hline(yintercept = .5, linetype = 'dashed') +
+  geom_hline(yintercept = .5, linetype = 'dashed', size = 1.2) +
+  geom_text(x = 8, y = 0.55, label = "Parity") +
   ggtitle('Proportion of Women across CSSS Iterations') +
   theme(
-    axis.text.x = element_text(angle = 90, size = 10),
+    axis.text.x = element_text(angle = 90, size = 10, vjust = 0.5),
     axis.text.y = element_text(size = 14),
     axis.title.x = element_text(size = 14),
     plot.title = element_text(hjust = .5, size = 16)
   )
+
+ggsave("~/Desktop/csss_gender_plot.png", height = 8, width = 8)
 ```
 
 ## Disciplines across Time
@@ -150,22 +156,30 @@ ggplot(dat_disciplines, aes(x = Disciplines, y = Proportion)) +
 
 ```{r}
 iter <- c('2006.Santa Fe', '2010.Santa Fe', '2018.Santa Fe')
-dat_disciplines_selection <- filter(dat_disciplines, Iteration %in% iter)
-dat_disciplines_selection$Iteration <- factor(dat_disciplines_selection$Iteration, levels = iter)
-
+dat_disciplines_selection <- dat_disciplines %>%
+  filter(Iteration %in% iter) %>%
+  rowwise() %>%
+  mutate(
+    Iteration = factor(Iteration, levels = iter),
+    Iteration = gsub("[.]", " ", Iteration)
+    )
+  
 ggplot(dat_disciplines_selection, aes(x = Disciplines, y = Proportion)) +
-  geom_bar(stat = 'identity') +
+  geom_bar(stat = 'identity', alpha = 0.8, fill = "dodgerblue4", color = "black") +
   facet_wrap(~ Iteration) +
   coord_flip() +
-  theme_bw() +
+  theme_minimal() +
   ylab('Proportion') +
   xlab('') +
-  ggtitle('Prevalence of Disciplines across three Years') +
+  ggtitle('Prevalence of disciplines across three years') +
+  guides(fill = FALSE) + 
   theme(
     axis.text.x = element_text(angle = 90, size = 8),
     axis.text.y = element_text(size = 10),
     plot.title = element_text(hjust = .5, size = 16)
   )
+
+ggsave("~/Desktop/csss_disciplines_three_years.png", height = 8, width = 10)
 ```
 
 ## Country across Time
@@ -245,7 +259,8 @@ dat_dsum<- dat_disciplines %>%
   group_by(Iteration) %>% 
   summarize(gini = Gini(Disciplines_int)) %>% 
   mutate(
-    Iteration = factor(Iteration, levels = sort(as.character(Iteration)))
+    Iteration = factor(Iteration, levels = sort(as.character(Iteration))),
+    Iteration = gsub("[.]", " ", Iteration)
   )
 
 ggplot(dat_dsum, aes(x = Iteration, y = gini)) +
@@ -263,8 +278,8 @@ ggplot(dat_dsum, aes(x = Iteration, y = gini)) +
   )
 
 ggplot(dat_dsum, aes(x = Iteration, y = gini)) +
-  geom_bar(stat = 'identity') +
-  theme_bw() +
+  geom_bar(stat = 'identity', fill = "forestgreen", alpha = 0.7, color = "black") +
+  theme_minimal() +
   xlab('') +
   coord_flip() +
   ggtitle('Inequality of Discipline Prevalence across Iterations') +
@@ -276,6 +291,8 @@ ggplot(dat_dsum, aes(x = Iteration, y = gini)) +
     axis.title.x = element_text(size = 16),
     plot.title = element_text(hjust = .5, size = 16)
   )
+
+ggsave("~/Desktop/csss_gini_plot.png", height = 8, width = 8)
 ```
 
 ## Survey Responses
@@ -301,7 +318,7 @@ dats <- dats %>%
     Published = ifelse(Published == 'Yes', 1, 0),
     Continued_Collaboration = ifelse(Continued_Collaboration == 'Yes', 1, 0),
     Iteration = interaction(Year, Location),
-    First_Discipline = factor(choose_first(Discipline_isced)), 
+    First_Discipline = factor(choose_first(Discipline_isced))
   )
 
 
@@ -351,6 +368,8 @@ ggplot(filter(datsm, Discipline_isced != ''),
     legend.position = 'None'
   ) +
   coord_flip()
+
+head(dats)
 ```
 
 We can make the same plots with the usefulness of input, continued collaboration, and communication difficulty.
