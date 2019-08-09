@@ -1,6 +1,6 @@
 ---
 title: "Descriptive Analysis of CSSS Data"
-date: 24th July, 2019
+date: 9th August, 2019
 author: Fabian Dablander
 output:
   html_document:
@@ -279,7 +279,7 @@ ggplot(dat_dsum, aes(x = Iteration, y = gini)) +
 ```
 
 ## Survey Responses
-First, we rename the columns to have more concise names.
+First, we rename the columns to have more concise names. In contrast to the previous code, where we have used the first discipline as their main discipline, we now duplicate a participant's entry for each discipline s/he indicated.
 
 ```{r}
 new_names <- c(
@@ -295,23 +295,48 @@ choose_first <- function(disciplines) {
 
 dats <- read.csv('data/csss-survey.csv')
 colnames(dats) <- new_names
-dats <- dats %>% 
+
+dats <- dats %>%
   mutate(
     Published = ifelse(Published == 'Yes', 1, 0),
     Continued_Collaboration = ifelse(Continued_Collaboration == 'Yes', 1, 0),
     Iteration = interaction(Year, Location),
-    First_Discipline = factor(choose_first(Discipline_isced), 
+    First_Discipline = factor(choose_first(Discipline_isced)), 
   )
 
+
+# Duplicates the entries for each discipline
+add_discipline_entries <- function(dats) {
+  new_dat <- c()
+  
+  for (i in seq(nrow(dats))) {
+    
+    row <- dats[i, ]
+    disc <- row$Discipline_isced
+    disc_split <- str_split(disc, ';|,', simplify = TRUE)
+    
+    for (j in seq(length(disc_split))) {
+      rowj <- row
+      rowj$Discipline_isced <- str_trim(disc_split[j])
+      
+      new_dat <- rbind(new_dat, rowj)
+    }
+  }
+  
+  data.frame(new_dat)
+}
+
+datsm <- add_discipline_entries(dats)
 dats_disciplines <- create_disciplines_dat(dats)
 ```
 
+
 ## CSSS Influence on Discipline
-The figure below shows how strongly different disciplines have been influenced by the CSSS summer school. Note that I only take the first discipline of each person as an approximation. Regardless, it seems that the social and behavioural sciences, as well as the life sciences, are more influenced then the physical sciences.
+The figure below shows how strongly different disciplines have been influenced by the CSSS summer school. We use all disciplines a participant has indicated. It seems that the social and behavioural sciences, the life sciences, and mathematics and statistics have been more influenced then the physical sciences.
 
 ```{r}
-ggplot(filter(dats, First_Discipline != ''),
-       aes(x = First_Discipline, y = CSSS_Influence, fill = First_Discipline)) +
+ggplot(filter(datsm, Discipline_isced != ''),
+       aes(x = Discipline_isced, y = CSSS_Influence, fill = Discipline_isced)) +
   geom_boxplot(outlier.shape = NA) +
   geom_point(position = position_jitter(width = .3, height = .05), size = .6, color = 'black') +
   theme_bw() +
@@ -330,29 +355,30 @@ ggplot(filter(dats, First_Discipline != ''),
 
 We can make the same plots with the usefulness of input, continued collaboration, and communication difficulty.
 ```{r}
-ggplot(filter(dats, First_Discipline != ''),
-       aes(x = First_Discipline, y = Input_Usefulness, fill = First_Discipline)) +
+ggplot(filter(datsm, Discipline_isced != ''),
+       aes(x = Discipline_isced, y = Input_Usefulness, fill = Discipline_isced)) +
   geom_boxplot() +
   geom_point(position = 'jitter') +
   theme_bw() +
   ylab('Usefulness of Input') +
   xlab('Discipline') +
+  ggtitle('Input Usefulness Other Disciplines by Discipline') +
   theme(
     axis.text.x = element_text(angle = 90, size = 12),
+    plot.title = element_text(hjust = .5, size = 16),
     legend.position = 'None'
   ) +
   coord_flip()
 
-dat_col <- filter(dats, First_Discipline != '') %>%
-  group_by(First_Discipline) %>%
+dat_col <- filter(datsm, Discipline_isced != '') %>%
+  group_by(Discipline_isced) %>%
   summarize(
     mean_collaboration = mean(Continued_Collaboration),
     sd_collaboration = sd(Continued_Collaboration)
   )
-    
 
-# Violin plots to see the bimodality better
-ggplot(dat_col, aes(x = First_Discipline, y = mean_collaboration, color = First_Discipline)) +
+
+ggplot(dat_col, aes(x = Discipline_isced, y = mean_collaboration, color = Discipline_isced)) +
   geom_point() +
   geom_errorbar(
     aes(
@@ -363,28 +389,17 @@ ggplot(dat_col, aes(x = First_Discipline, y = mean_collaboration, color = First_
   theme_bw() +
   ylab('% Continued Collaboration') +
   xlab('Discipline') +
+  ggtitle('Continued Collaboration After CSSS') +
   theme(
     axis.text.x = element_text(angle = 90, size = 12),
+    plot.title = element_text(hjust = .5, size = 16),
     legend.position = 'None'
   ) +
   coord_flip()
 
 
-ggplot(filter(dats, First_Discipline != ''),
-       aes(x = First_Discipline, y = Communication_Difficulty, fill = First_Discipline)) +
-  geom_boxplot() +
-  geom_point(position = 'jitter') +
-  theme_bw() +
-  ylab('Difficulty of Communication') +
-  xlab('Discipline') +
-  theme(
-    axis.text.x = element_text(angle = 90, size = 12),
-    legend.position = 'None'
-  ) +
-  coord_flip()
-
-ggplot(filter(dats, First_Discipline != ''),
-       aes(x = First_Discipline, y = Communication_Difficulty, fill = First_Discipline)) +
+ggplot(filter(datsm, Discipline_isced != ''),
+       aes(x = Discipline_isced, y = Communication_Difficulty, fill = Discipline_isced)) +
   geom_boxplot(outlier.shape = NA) +
   geom_point(position = position_jitter(width = .3, height = .05), size = .6, color = 'black') +
   theme_bw() +
@@ -409,7 +424,7 @@ library('RColorBrewer')
 
 docs <- Corpus(VectorSource(as.character(dats$Interdisciplinary_Thoughts)))
 docs <- tm_map(docs, removePunctuation)
-docs <- tm_map(docs, removeWords, stopwords('english'))
+docs <- tm_map(docs, removeWords, c(stopwords('english'), 'can'))
 
 dtm <- TermDocumentMatrix(docs)
 m <- as.matrix(dtm)
