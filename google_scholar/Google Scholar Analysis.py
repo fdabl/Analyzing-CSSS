@@ -52,7 +52,6 @@ def fetch_and_pickle(list_of_names, file_name):
 			pickle.dump(dictionary_of_author_objects, open(file_name, 'wb')) #creates file and serializes dictionary of author objects
 
 	pickle.dump(dictionary_of_author_objects, open(file_name, 'wb'))
-#fetch_and_pickle(create_list_of_names(), 'author_objects.p')
 
 #Opens csv of manual lookups and searches Google Scholar for those particular names. Returns dictionary with key == CSSS Name and value == new author object (for CSSS participants that initally returned 'None' but profile was located manually)
 def find_correct_profile(file_name):
@@ -73,7 +72,6 @@ def find_correct_profile(file_name):
 				new_scholar_dict[csss_name] = author_object
 
 	return new_scholar_dict
-#new_scholar_dict = find_correct_profile('Not_Found_in_Scholar.csv')
 
 #Adds results of find_correct_profile function to original pickled dictionary
 #DONE - doesn't need to be called again unless more profiles are found
@@ -85,7 +83,6 @@ def update_pickled_dict(pickled_file, new_scholar_dict):
 			dictionary_of_author_objects[key] = value
 
 	pickle.dump(dictionary_of_author_objects, open(pickled_file, 'wb')) #creates file and serializes dictionary of author objects
-#update_pickled_dict('author_objects.p', new_scholar_dict)
 
 #Converts dictionary to csv
 #NOT IN USE - csv had a bunch of errors, not sure why
@@ -106,7 +103,6 @@ def dictionary_to_csv(file_name):
 			dict_writer.writerow(auth_to_dict(csss_name, author_object))
 			
 			count += 1
-#dictionary_to_csv('author_objects.p')
 
 #Creates values for scholar_dict(file_name) function
 def auth_to_dict(csss_name, author_object):
@@ -157,15 +153,6 @@ def scholar_dict(file_name):
 			count += 1
 		
 		return scholar_dictionary
-scholar_dictionary = scholar_dict('author_objects.p')
-
-#Number of CSSS names for which Google Scholar profiles could not be found
-count = 0
-for key, value in scholar_dictionary.items():
-	if 'affiliation' not in value:
-		count += 1
-		#print(key)
-#print(count)
 
 #Creates list of CSSS participants where name from our dataset was exact match with name on Google Scholar profile found by Scholarly
 def same_names(scholar_dictionary):
@@ -180,8 +167,6 @@ def same_names(scholar_dictionary):
 			continue
 
 	return name_matches
-name_matches = same_names(scholar_dictionary)
-#print(len(name_matches))
 
 #Creates list of all coauthors in Google Scholar profiles found by Scholarly
 def list_of_coauthors(scholar_dictionary):
@@ -196,7 +181,6 @@ def list_of_coauthors(scholar_dictionary):
 			continue
 
 	return list(set(list_of_coauthors))	
-all_coauthors = list_of_coauthors(scholar_dictionary)
 
 #Creates list of all names in Google Scholar profiles found by Scholarly (many incorrect - not CSSS participant, someone with same or similar name)
 def list_of_scholar_names(scholar_dictionary):
@@ -209,7 +193,6 @@ def list_of_scholar_names(scholar_dictionary):
 			continue
 
 	return list_of_scholar_names
-all_scholar_names = list_of_scholar_names(scholar_dictionary)
 
 #Creates dictionary where key == CSSS Name and value == Google Scholar profile name
 def dict_of_scholar_names(scholar_dictionary):
@@ -222,7 +205,6 @@ def dict_of_scholar_names(scholar_dictionary):
 			continue
 
 	return dict_of_scholar_names
-#dict_scholar_names = dict_of_scholar_names(scholar_dictionary)
 
 #Creates list of CSSS participants (using name on Google Scholar profile) who were found in all_coauthors 
 def list_of_collaborators(all_scholar_names, all_coauthors):
@@ -233,10 +215,6 @@ def list_of_collaborators(all_scholar_names, all_coauthors):
 			collaborators.append(name)
 
 	return list(set(collaborators))
-collaborators = list_of_collaborators(all_scholar_names, all_coauthors)
-#print(len(collaborators))
-if 'Jonas M. B. Haslbeck' in all_coauthors:
-	print('jonas is in collabs')
 
 #for key, value in scholar_dictionary.items():
 #	try:
@@ -271,8 +249,6 @@ def collabs(collaborators, scholar_dictionary):
 			continue
 
 	return copubs
-#copubs = collabs(collaborators, scholar_dictionary)
-#print(len(copubs))
 
 ###HAS ERRORS - returns many copublications between two or more people who likely did not even attend CSSS (but have common names, so Scholarly returned their profiles instead of CSSS profiles)
 ###Not sure what to do about it. Remove profiles of people with > 5000 citations? Remove profiles of people with short (and therefore likely more common) names?
@@ -299,9 +275,36 @@ def collab_pubs(scholar_dictionary):
 
 	return copublications
 
-copublications = collab_pubs(scholar_dictionary)
+#fetch_and_pickle(create_list_of_names(), 'author_objects.p')
+#new_scholar_dict = find_correct_profile('Not_Found_in_Scholar.csv')
+#update_pickled_dict('author_objects.p', new_scholar_dict)
 
-print(copublications)
-print(len(copublications))
+scholar_dictionary = scholar_dict('author_objects.p')
+
+#name_matches = same_names(scholar_dictionary)
+#print(len(name_matches))
+
+#Number of CSSS names for which Google Scholar profiles could not be found
+#count = 0
+#for key, value in scholar_dictionary.items():
+#	if 'affiliation' not in value:
+#		count += 1
+		#print(key)
+#print(count)
+
+all_coauthors = list_of_coauthors(scholar_dictionary)
+
+all_scholar_names = list_of_scholar_names(scholar_dictionary)
+
+#dict_scholar_names = dict_of_scholar_names(scholar_dictionary)
+
+collaborators = list_of_collaborators(all_scholar_names, all_coauthors)
+print(len(collaborators))
+
+#copubs = collabs(collaborators, scholar_dictionary)
+#print(len(copubs))
+
+#copublications = collab_pubs(scholar_dictionary)
+#print(len(copublications))
 
 
