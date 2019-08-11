@@ -1,4 +1,11 @@
+.DS_Store
+
+# R notebook output
+.nb.html
+
+# Figures
 figures/
+*.png
 
 # History files
 .Rhistory
