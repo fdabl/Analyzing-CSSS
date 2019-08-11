@@ -10,7 +10,8 @@ load_acsss_data <- function(path) {
       Country_University = as.character(Country_University),
       Country_University = ifelse(
         Country_University %in% c('US', 'USA', 'United States'), 'USA', Country_University
-      )
+      ),
     )
+
   return(dat)
 }
