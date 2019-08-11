@@ -1,0 +1,14 @@
+---
+title: "ACSSS Package Example"
+output: html_notebook
+---
+
+```{r}
+library(ACSSS)
+library(tidyverse)
+path <- '~/Documents/Analyzing-CSSS/data/cleaned_csss-all.csv'
+dat <- load_acsss_data(path)
+head(dat)
+
+```
+
