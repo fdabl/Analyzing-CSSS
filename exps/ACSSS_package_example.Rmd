@@ -21,3 +21,15 @@ edges <- build_edge_dataframe(dat, '2017.Santa Fe')
 head(edges)
 ```
 
+```{r}
+library(ACSSS)
+head(get_hhi(nodes, edges, 'discp'))
+```
+
+```{r}
+head(get_ei(nodes, edges, 'discp'))
+```
+
+```{r}
+head(get_perc_sim(nodes, edges, 'discp'))
+```
