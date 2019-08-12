@@ -3,6 +3,9 @@
 #' @param df dataframe containing the ACSSS study data
 #' @param iter the year/location to build edges for
 #' @export
+#' @import dplyr
+#' @importFrom DiagrammeR create_edge_df
+#' @importFrom tidyr separate
 build_edge_dataframe <- function(
   df,
   iter,
@@ -56,13 +59,13 @@ build_edge_dataframe <- function(
     select(name.link) %>%
     unique() %>%
     left_join(edge.df.temp, by = "name.link") %>%
-    separate(col = Topic_isced, into = c("topic.disc1", "topic.disc2"),
+    tidyr::separate(col = Topic_isced, into = c("topic.disc1", "topic.disc2"),
              sep = "[;,]", extra = "drop", remove = FALSE, fill = "right")
 
   edge.df$edge.color <- disc.col.palette[edge.df$topic.disc1]
   edge.df$edge.color[is.na(edge.df$edge.color)] <- missing.disc.col
 
-  edge.df <- DiagrammeR::create_edge_df(
+  edge.df <- create_edge_df( ## from the DiagrammeR package
     from = edge.df$name.id1,
     to = edge.df$name.id2,
     color = edge.df$edge.color,
