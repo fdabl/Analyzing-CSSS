@@ -3,6 +3,9 @@
 #' @param df dataframe containing the ACSSS study data
 #' @param iter the year/location to build nodes for
 #' @export
+#' @import dplyr
+#' @importFrom DiagrammeR create_node_df
+#' @importFrom tidyr separate
 build_node_dataframe <- function(
   df,
   iter,
@@ -40,7 +43,7 @@ build_node_dataframe <- function(
       Name = as.factor(Name),
       name.id = as.numeric(droplevels(Name))) %>%
     # Separate listed disciplines into separate columns
-    separate(col = Discipline_isced, into = c("disc1", "disc2"),
+    tidyr::separate(col = Discipline_isced, into = c("disc1", "disc2"),
              sep = "[;,]", extra = "drop", remove = FALSE, fill = "right")
 
   # Set the disciplinary color palette
