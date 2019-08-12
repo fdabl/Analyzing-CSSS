@@ -1,0 +1,35 @@
+---
+title: "ACSSS Package Example"
+output: html_notebook
+---
+
+```{r}
+library(ACSSS)
+library(tidyverse)
+path <- '~/Documents/Analyzing-CSSS/data/cleaned_csss-all.csv'
+dat <- load_acsss_data(path)
+head(dat)
+```
+
+```{r}
+nodes <- build_node_dataframe(dat, '2017.Santa Fe')
+head(nodes)
+```
+
+```{r}
+edges <- build_edge_dataframe(dat, '2017.Santa Fe')
+head(edges)
+```
+
+```{r}
+library(ACSSS)
+head(get_hhi(nodes, edges, 'discp'))
+```
+
+```{r}
+head(get_ei(nodes, edges, 'discp'))
+```
+
+```{r}
+head(get_perc_sim(nodes, edges, 'discp'))
+```
