@@ -24,24 +24,6 @@ get_sentiment <- function(text) {
   analyzeSentiment(text)$SentimentQDAP
 }
 
-
-# datd <- read.csv('data/csss-dakota.csv', na.strings = '')
-# datf <- read.csv('data/csss-fabian.csv', na.strings = '')
-# datj <- read.csv('data/csss-jackie.csv', na.strings = '')
-# date <- read.csv('data/csss-emily.csv', na.strings = '')
-# datk <- read.csv('data/csss-kyle.csv', na.strings = c('NA', 'NA1', 'NA2'))
-
-# add sentiment of biography because ... why not?
-# dat <- rbind(datf, date, datd, datk, datj) %>% 
-#   mutate(
-#     Bio_sentiment = get_sentiment(as.character(Biography)),
-#     Iteration = interaction(Year, Location),
-#     Country_University = as.character(Country_University),
-#     Country_University = ifelse(
-#       Country_University %in% c('US', 'USA', 'United States'), 'USA', Country_University
-#     )
-#   )
-
 dat <- read.csv('data/cleaned_csss-all.csv', na.strings = '') %>% 
   mutate(
     Bio_sentiment = get_sentiment(as.character(Biography)),
