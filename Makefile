@@ -23,17 +23,27 @@ ITERS = \
 NODE_ITERS = $(addsuffix _nodes.csv, $(ITERS))
 EDGE_ITERS = $(addsuffix _edges.csv, $(ITERS))
 
-
+# All targets to produce
 all: $(addprefix data/derived/nodefiles/, $(NODE_ITERS)) \
 		 $(addprefix data/derived/edgefiles/, $(EDGE_ITERS)) \
 		 figures/prop_womem_over_time.png
 
+# Rules for cleaning, either cleaning all, only data, or only the figures
 clean:
 		rm -rf data/derived
+		rm -rf figures/*
 
-load_acsss:
+clean_data:
+	rm -rf data/derived
+
+clean_figures:
+	rm -rf figures/*
+
+# Rule for reloading the ACSSS package
+reload:
 		Rscript -e 'devtools::install("ACSSS")'
 
+# Rules for creating datafiles
 data/derived/processed_data.csv: data/raw/cleaned_csss-all.csv
 		mkdir -p data/derived/
 		Rscript scripts/process_data.R $< $@
@@ -46,6 +56,8 @@ data/derived/edgefiles/%_edges.csv: data/derived/processed_data.csv
 	mkdir -p data/derived/edgefiles/
 	Rscript scripts/build_edgefile.R $< $@
 
+
+# Rules for producing plots
 figures/prop_womem_over_time.png: data/derived/processed_data.csv
 	mkdir -p figures/
 	Rscript scripts/plot_prop_women_over_time.R $< $@
