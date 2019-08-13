@@ -1,25 +1,30 @@
-# There is probably a quicker and easier way to do this, but since I am still
-# getting use to Makefiles, its probably best to make things as explicit as possible
-NODE_ITERS = \
-	2005.Beijing_nodes.csv \
-	2005.SantaFe_nodes.csv \
-	2006.Beijing_nodes.csv \
-	2006.SantaFe_nodes.csv \
-	2007.Beijing_nodes.csv \
-	2007.SantaFe_nodes.csv \
-	2008.SantaFe_nodes.csv \
-	2009.SantaFe_nodes.csv \
-	2010.SantaFe_nodes.csv \
-	2011.SantaFe_nodes.csv \
-	2012.SantaFe_nodes.csv \
-	2013.SantaFe_nodes.csv \
-	2014.SantaFe_nodes.csv \
-	2015.SantaFe_nodes.csv \
-	2016.SantaFe_nodes.csv \
-	2017.SantaFe_nodes.csv \
-	2018.SantaFe_nodes.csv
+# These are all the iterations that we will be using, including instances of the
+# summer school both in Santa Fe and in Beijing
+ITERS = \
+	2005.Beijing \
+	2005.SantaFe \
+	2006.Beijing \
+	2006.SantaFe \
+	2007.Beijing \
+	2007.SantaFe \
+	2008.SantaFe \
+	2009.SantaFe \
+	2010.SantaFe \
+	2011.SantaFe \
+	2012.SantaFe \
+	2013.SantaFe \
+	2014.SantaFe \
+	2015.SantaFe \
+	2016.SantaFe \
+	2017.SantaFe \
+	2018.SantaFe
 
-all: $(addprefix data/derived/nodefiles/, $(NODE_ITERS))
+# Populate the lists of Node and Edge filenames
+NODE_ITERS = $(addsuffix _nodes.csv, $(ITERS))
+EDGE_ITERS = $(addsuffix _edges.csv, $(ITERS))
+
+
+all: $(addprefix data/derived/nodefiles/, $(NODE_ITERS)) $(addprefix data/derived/edgefiles/, $(EDGE_ITERS))
 #data/derived/processed_data.csv
 
 clean:
@@ -35,3 +40,7 @@ data/derived/processed_data.csv: data/raw/cleaned_csss-all.csv
 data/derived/nodefiles/%_nodes.csv: data/derived/processed_data.csv
 	mkdir -p data/derived/nodefiles/
 	Rscript scripts/build_nodefile.R $< $@
+
+data/derived/edgefiles/%_edges.csv: data/derived/processed_data.csv
+	mkdir -p data/derived/edgefiles/
+	Rscript scripts/build_edgefile.R $< $@
