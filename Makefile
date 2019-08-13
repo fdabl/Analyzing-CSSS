@@ -24,8 +24,9 @@ NODE_ITERS = $(addsuffix _nodes.csv, $(ITERS))
 EDGE_ITERS = $(addsuffix _edges.csv, $(ITERS))
 
 
-all: $(addprefix data/derived/nodefiles/, $(NODE_ITERS)) $(addprefix data/derived/edgefiles/, $(EDGE_ITERS))
-#data/derived/processed_data.csv
+all: $(addprefix data/derived/nodefiles/, $(NODE_ITERS)) \
+		 $(addprefix data/derived/edgefiles/, $(EDGE_ITERS)) \
+		 figures/prop_womem_over_time.png
 
 clean:
 		rm -rf data/derived
@@ -44,3 +45,7 @@ data/derived/nodefiles/%_nodes.csv: data/derived/processed_data.csv
 data/derived/edgefiles/%_edges.csv: data/derived/processed_data.csv
 	mkdir -p data/derived/edgefiles/
 	Rscript scripts/build_edgefile.R $< $@
+
+figures/prop_womem_over_time.png: data/derived/processed_data.csv
+	mkdir -p figures/
+	Rscript scripts/plot_prop_women_over_time.R $< $@
