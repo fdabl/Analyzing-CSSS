@@ -230,20 +230,20 @@ def collabs(collaborators, scholar_dictionary):
 	all_pubs = {}
 	copubs = {}
 
-	for value in scholar_dictionary.values():
+	for key, value in scholar_dictionary.items():
 		try:
 			if value['name'] in collaborators:
 				for pub in list(set(value['publications'])):
-					if pub not in all_pubs.keys():
-						all_pubs[pub] = value['name']
-					elif pub in all_pubs.keys() and all_pubs[pub] == value['name']:
-						all_pubs[pub] = value['name']
-					elif pub in all_pubs.keys() and pub not in copubs.keys():
-						copubs[pub] = all_pubs[pub].append(value['name'])
-					elif pub in all_pubs.keys() and pub in copubs.keys() and value['name'] in copubs[pub]:
+					if pub in all_pubs.keys() and pub in copubs.keys() and value['name'] in copubs[pub]:
 						continue
 					elif pub in all_pubs.keys() and pub in copubs.keys():
 						copubs[pub].append(value['name'])
+					elif pub in all_pubs.keys() and all_pubs[pub] == value['name']:
+						continue
+					elif pub in all_pubs.keys() and pub not in copubs.keys():
+						copubs[pub] = [all_pubs[pub], value['name']]
+					else:
+						all_pubs[pub] = value['name']
 					
 		except:
 			continue
@@ -301,10 +301,10 @@ all_scholar_names = list_of_scholar_names(scholar_dictionary)
 collaborators = list_of_collaborators(all_scholar_names, all_coauthors)
 print(len(collaborators))
 
-#copubs = collabs(collaborators, scholar_dictionary)
-#print(len(copubs))
+copubs = collabs(collaborators, scholar_dictionary)
+print(copubs)
 
 #copublications = collab_pubs(scholar_dictionary)
-#print(len(copublications))
+#print(copublications)
 
 
