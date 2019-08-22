@@ -3,6 +3,9 @@
 # R notebook output
 .nb.html
 
+# Data
+*.csv
+
 # Figures
 figures/
 *.png
@@ -45,3 +48,4 @@ vignettes/*.pdf
 *.knit.md
 
 
+.Rproj.user
