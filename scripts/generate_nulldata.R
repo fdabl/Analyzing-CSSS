@@ -37,24 +37,30 @@ if (func_name == "ei") {
   stop(paste0("Error: \"", func_name, "\" is not a valid homophily function"))
 }
 
-# get the avtual value
-actual <- mean(func(nodes, edges, column)$value, na.rm = T)
-actual.df <- data.frame(value = actual, actual = T)
-
-
-# perform a number of iterations of shuffling
-dist <- sapply(c(1:NUM_ITERATIONS), function(x) {
-  # Shuffle the node characteristics
-  nodes.shuffled <- nodes
-  nodes.shuffled[[column]] <- nodes[[column]][sample(nrow(nodes))]
-  return(mean(func(nodes.shuffled, edges, column)$value, na.rm = T))
-})
-
-# Combine the actual with the null model data
-df <- rbind(actual.df, data.frame(value = dist, actual = F))
-
 # The path to save the output
 path.to.output <- args[5]
 
-# Save the file
-write.csv(df, path.to.output)
+if (any(!is.na(nodes[[column]]))) {
+  # get the avtual value
+  actual <- mean(func(nodes, edges, column)$value, na.rm = T)
+  actual.df <- data.frame(value = actual, actual = T)
+  
+  
+  # perform a number of iterations of shuffling
+  dist <- sapply(c(1:NUM_ITERATIONS), function(x) {
+    # Shuffle the node characteristics
+    nodes.shuffled <- nodes
+    nodes.shuffled[[column]] <- nodes[[column]][sample(nrow(nodes))]
+    return(mean(func(nodes.shuffled, edges, column)$value, na.rm = T))
+  })
+  
+  # Combine the actual with the null model data
+  df <- rbind(actual.df, data.frame(value = dist, actual = F))
+  
+  # Save the file
+  write.csv(df, path.to.output)
+} else {
+  # Otherwise, the entire row is blank and no useful data can be obtained
+  blank.df <- data.frame(value = 0, actual = F)
+  write.csv(blank.df, path.to.output)
+}
