@@ -1,5 +1,7 @@
 .DS_Store
 
+.snakemake
+
 # R notebook output
 .nb.html
 
