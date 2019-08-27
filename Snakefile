@@ -19,6 +19,22 @@ FIG_DIR = osjoin(PROJ_HOME, 'figures')
 CLEANED_RAW_DATA = osjoin(RAW_DIR, 'cleaned_csss-all.csv')
 PROCESSED_DATA = osjoin(DERIVED_DIR, 'processed_data.csv')
 
+###############
+# Graph files
+###############
+NODEFILES = osjoin(NODEFILE_DIR, '{iter}_nodes.csv')
+EDGEFILES = osjoin(EDGEFILE_DIR, '{iter}_edges.csv')
+
+###############
+# Nulldata
+###############
+NULLDATA_FILES = osjoin(DERIVED_DIR, 'nulldata', '{iter}', '{func}', '{iter}_{attr}_{func}_nulldata.csv')
+
+###############
+# Figures
+###############
+PROP_WOMEN_OVER_TIME_PLOT = osjoin(FIG_DIR, 'prop_women_over_time.png')
+
 
 # The iterations of the summer school
 ITERS = [
@@ -46,22 +62,6 @@ ATTRIBUTES = ['gender', 'discp', 'prstg']
 
 # The homophily functions
 HOM_FUNCS = ['ei', 'hhi', 'perc_sim']
-
-###############
-# Graph files
-###############
-NODEFILES = osjoin(NODEFILE_DIR, '{iter}_nodes.csv')
-EDGEFILES = osjoin(EDGEFILE_DIR, '{iter}_edges.csv')
-
-###############
-# Nulldata
-###############
-NULLDATA_FILES = osjoin(DERIVED_DIR, 'nulldata', '{iter}', '{func}', '{iter}_{attr}_{func}_nulldata.csv')
-
-###############
-# Figures
-###############
-PROP_WOMEN_OVER_TIME_PLOT = osjoin(FIG_DIR, 'prop_women_over_time.png')
 
 
 ###################
