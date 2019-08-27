@@ -34,7 +34,7 @@ NULLDATA_FILES = osjoin(DERIVED_DIR, 'nulldata', '{iter}', '{func}', '{iter}_{at
 # Figures
 ###############
 PROP_WOMEN_OVER_TIME_PLOT = osjoin(FIG_DIR, 'prop_women_over_time.png')
-
+NULLDATA_HIST_PLOTS = osjoin(FIG_DIR, 'nullhist', '{iter}', '{func}', '{iter}_{attr}_{func}_nullhist.png')
 
 # The iterations of the summer school
 ITERS = [
@@ -72,7 +72,8 @@ rule all:
         expand(NODEFILES, iter=ITERS),
         expand(EDGEFILES, iter=ITERS),
         expand(NULLDATA_FILES, iter=ITERS, func=HOM_FUNCS, attr=ATTRIBUTES),
-        PROP_WOMEN_OVER_TIME_PLOT
+        PROP_WOMEN_OVER_TIME_PLOT,
+        expand(NULLDATA_HIST_PLOTS, iter=ITERS, func=HOM_FUNCS, attr=ATTRIBUTES)
 
 rule process_data:
     input: CLEANED_RAW_DATA
@@ -98,3 +99,8 @@ rule plot_prop_women_over_time:
     input: PROCESSED_DATA
     output: PROP_WOMEN_OVER_TIME_PLOT,
     shell: 'Rscript scripts/plot_prop_women_over_time.R {input} {output}'
+
+rule plot_nullhist:
+    input: rules.generate_nulldata.output
+    output: NULLDATA_HIST_PLOTS
+    shell: 'Rscript scripts/plot_nulldata_hist.R {input} {output}'
