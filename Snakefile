@@ -53,6 +53,11 @@ HOM_FUNCS = ['ei']
 NODEFILES = osjoin(NODEFILE_DIR, '{iter}_nodes.csv')
 EDGEFILES = osjoin(EDGEFILE_DIR, '{iter}_edges.csv')
 
+###############
+# Figures
+###############
+PROP_WOMEN_OVER_TIME_PLOT = osjoin(FIG_DIR, 'prop_women_over_time.png')
+
 
 ###################
 # Begin Rules
@@ -60,7 +65,8 @@ EDGEFILES = osjoin(EDGEFILE_DIR, '{iter}_edges.csv')
 rule all:
     input:
         expand(NODEFILES, iter=ITERS),
-        expand(EDGEFILES, iter=ITERS)
+        expand(EDGEFILES, iter=ITERS),
+        PROP_WOMEN_OVER_TIME_PLOT
 
 rule process_data:
     input: CLEANED_RAW_DATA
@@ -76,3 +82,8 @@ rule generate_edgefiles:
     input: PROCESSED_DATA
     output: EDGEFILES
     shell: 'Rscript scripts/build_edgefile.R {input} {output}'
+
+rule plot_prop_women_over_time:
+    input: PROCESSED_DATA
+    output: PROP_WOMEN_OVER_TIME_PLOT,
+    shell: 'Rscript scripts/plot_prop_women_over_time.R {input} {output}'
