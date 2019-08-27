@@ -42,16 +42,21 @@ ITERS = [
 ]
 
 # The node attributes
-ATTR = ['gender', 'discp', 'prstg']
+ATTRIBUTES = ['gender', 'discp', 'prstg']
 
 # The homophily functions
-HOM_FUNCS = ['ei']
+HOM_FUNCS = ['ei', 'hhi', 'perc_sim']
 
 ###############
 # Graph files
 ###############
 NODEFILES = osjoin(NODEFILE_DIR, '{iter}_nodes.csv')
 EDGEFILES = osjoin(EDGEFILE_DIR, '{iter}_edges.csv')
+
+###############
+# Nulldata
+###############
+NULLDATA_FILES = osjoin(DERIVED_DIR, 'nulldata', '{iter}', '{func}', '{iter}_{attr}_{func}_nulldata.csv')
 
 ###############
 # Figures
@@ -66,6 +71,7 @@ rule all:
     input:
         expand(NODEFILES, iter=ITERS),
         expand(EDGEFILES, iter=ITERS),
+        expand(NULLDATA_FILES, iter=ITERS, func=HOM_FUNCS, attr=ATTRIBUTES),
         PROP_WOMEN_OVER_TIME_PLOT
 
 rule process_data:
@@ -82,6 +88,11 @@ rule generate_edgefiles:
     input: PROCESSED_DATA
     output: EDGEFILES
     shell: 'Rscript scripts/build_edgefile.R {input} {output}'
+
+rule generate_nulldata:
+    input: rules.generate_nodefiles.output, rules.generate_edgefiles.output
+    output: NULLDATA_FILES
+    shell: 'Rscript scripts/generate_nulldata.R {input} {wildcards.attr} {wildcards.func} {output}'
 
 rule plot_prop_women_over_time:
     input: PROCESSED_DATA
