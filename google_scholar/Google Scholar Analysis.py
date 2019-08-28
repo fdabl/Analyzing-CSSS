@@ -303,8 +303,11 @@ print(len(collaborators))
 
 copubs = collabs(collaborators, scholar_dictionary)
 print(copubs)
+print(len(copubs))
 
 #copublications = collab_pubs(scholar_dictionary)
 #print(copublications)
 
-
+#with open('copubs.csv', 'w') as f:
+	#for key in copubs.keys():
+		#f.write("%s,%s\n"%(key,copubs[key]))
