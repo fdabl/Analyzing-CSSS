@@ -15,7 +15,7 @@
 #' @export
 get_hhi <- function(nodes, edges, column) {
   results <- as.data.frame(unique(nodes$id))
-  results$hhi <- NULL
+  results$value <- NULL
   for(i in unique(nodes$id)) {
     cur.edges <- edges[edges$from == i, ]
     cur.edges <- cur.edges[-1]
@@ -31,7 +31,7 @@ get_hhi <- function(nodes, edges, column) {
 
       d <- shares[ , 'prop']
       hhi <- sum(d ^ 2)
-      results$hhi[i] <- hhi
+      results$value[i] <- hhi
     }
   }
   return(results)
@@ -52,7 +52,7 @@ get_hhi <- function(nodes, edges, column) {
 #' @export
 get_ei <- function(nodes, edges, column) {
   results <- as.data.frame(unique(nodes$id))
-  results$ei <- 0
+  results$value <- 0
   for(i in unique(nodes$id)) {
     cur.edges <- edges[edges$from == i, ]
     cur.edges <- cur.edges[-1]
@@ -63,7 +63,7 @@ get_ei <- function(nodes, edges, column) {
       check <- as.character(nodes[nodes$id == i, column])
       num.same <- nrow(cur.edges[cur.edges[ ,column] == check, ])
       num.dif <- nrow(cur.edges[cur.edges[ ,column] != check, ])
-      results$ei[i] <- as.numeric((num.same - num.dif)/nrow(cur.edges))
+      results$value[i] <- as.numeric((num.same - num.dif)/nrow(cur.edges))
     }
   }
   return(results)
@@ -83,7 +83,7 @@ get_ei <- function(nodes, edges, column) {
 #' @export
 get_perc_sim <- function(nodes, edges, column) {
   results <- as.data.frame(unique(nodes$id))
-  results$sim <- 0
+  results$value <- 0
   for(i in unique(nodes$id)) {
     cur.edges <- edges[edges$from == i, ]
     cur.edges <- cur.edges[-1]
@@ -93,7 +93,7 @@ get_perc_sim <- function(nodes, edges, column) {
     if(!is.null(dim(cur.edges))) {
       check <- as.character(nodes[nodes$id == i, column])
       num.same <- nrow(cur.edges[cur.edges[ ,column] == check, ])
-      results$sim[i] <- num.same / nrow(cur.edges)
+      results$value[i] <- num.same / nrow(cur.edges)
     }
   }
   return(results)

@@ -1,5 +1,8 @@
 .DS_Store
 
+.snakemake
+PROJ_HOME_DIR
+
 # R notebook output
 .nb.html
 
