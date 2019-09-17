@@ -30,6 +30,10 @@ EDGEFILES = osjoin(EDGEFILE_DIR, '{iter}_edges.csv')
 ###############
 NULLDATA_FILES = osjoin(DERIVED_DIR, 'nulldata', '{iter}', '{func}', '{iter}_{attr}_{func}_nulldata.csv')
 
+NULLDATA_AGGREGATED = osjoin(DERIVED_DIR, 'nulldata', 'aggregated_nulldata.csv')
+
+#NULLDATA_EI_PERCENTILE = osjoin(DERIVED_DIR, 'nulldata', '{attr}_{func}_nullpercentile.csv')
+
 ###############
 # Figures
 ###############
@@ -72,6 +76,7 @@ rule all:
         expand(NODEFILES, iter=ITERS),
         expand(EDGEFILES, iter=ITERS),
         expand(NULLDATA_FILES, iter=ITERS, func=HOM_FUNCS, attr=ATTRIBUTES),
+        NULLDATA_AGGREGATED,
         PROP_WOMEN_OVER_TIME_PLOT,
         expand(NULLDATA_HIST_PLOTS, iter=ITERS, func=HOM_FUNCS, attr=ATTRIBUTES)
 
@@ -94,6 +99,11 @@ rule generate_nulldata:
     input: rules.generate_nodefiles.output, rules.generate_edgefiles.output
     output: NULLDATA_FILES
     shell: 'Rscript scripts/generate_nulldata.R {input} {wildcards.attr} {wildcards.func} {output}'
+
+rule aggregate_nulldata:
+    input: expand(rules.generate_nulldata.output, iter=ITERS, func=HOM_FUNCS, attr=ATTRIBUTES)
+    output: NULLDATA_AGGREGATED,
+    shell: "Rscript scripts/aggregate_nulldata.R {input} {output}"
 
 rule plot_prop_women_over_time:
     input: PROCESSED_DATA
