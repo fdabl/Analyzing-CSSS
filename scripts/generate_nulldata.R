@@ -5,7 +5,7 @@ library(dplyr)
 library(ACSSS)
 
 # The number of times to shuffle and generate a distribution
-NUM_ITERATIONS = 100
+NUM_ITERATIONS = 500
 
 # Parse command line arguments
 args <- commandArgs(trailingOnly=TRUE)
