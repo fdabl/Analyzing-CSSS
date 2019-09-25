@@ -28,10 +28,14 @@ percentile_plot <- percentiles %>%
   ggplot(aes(x = Year, y = percentile, color = func, shape = func, group = func)) +
     geom_point(size = 2) +
     geom_line() +
+    facet_wrap(~func, ncol = 1) +
     scale_color_discrete(name = "Homophily function", labels = c("E-I", "HHI", "Percent Similarity")) +
     scale_shape_discrete(name = "Homophily function", labels = c("E-I", "HHI", "Percent Similarity")) +
     theme_minimal() +
-    theme(legend.position = "bottom") +
+    theme(
+      legend.position = "right",
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    ) +
     labs(y = "Percentile of actual vs. null")
 
 
