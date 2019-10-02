@@ -62,7 +62,7 @@ ITERS = [
 ]
 
 # The node attributes
-ATTRIBUTES = ['gender', 'discp', 'prstg', 'pos.var']
+ATTRIBUTES = ['gender', 'discp', 'prstg', 'pos.var', 'cntry']
 
 # The homophily functions
 HOM_FUNCS = ['ei', 'hhi', 'perc_sim']
