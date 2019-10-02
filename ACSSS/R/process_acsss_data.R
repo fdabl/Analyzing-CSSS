@@ -13,7 +13,7 @@ process_acsss_data <- function(unprocessed) {
         Country_University %in% c('US', 'USA', 'United States'), 'USA', Country_University
       ),
       Prestige = ifelse(Prestige == "Top 50", "Top 50", "Not Top 50"),
-      Position = ifelse(tolower(Position) %in% c("student", "postdoc", "professor"),
+      Position = ifelse(tolower(Position) %in% c("student", "postdoc", "professor", "researcher"),
                         "academia",
                         "not academia"),
       Discipline_isced = ifelse(Discipline_isced %in%
