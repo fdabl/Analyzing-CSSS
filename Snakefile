@@ -58,7 +58,8 @@ ITERS = [
     '2015.SantaFe',
     '2016.SantaFe',
     '2017.SantaFe',
-    '2018.SantaFe'
+    '2018.SantaFe',
+    '2019.SantaFe'
 ]
 
 # The node attributes
@@ -103,7 +104,8 @@ rule generate_nulldata:
     shell: 'Rscript scripts/generate_nulldata.R {input} {wildcards.attr} {wildcards.func} {output}'
 
 rule aggregate_nulldata:
-    input: expand(rules.generate_nulldata.output, iter=ITERS, func=HOM_FUNCS, attr=ATTRIBUTES)
+    #input: expand(rules.generate_nulldata.output, iter =
+    input: expand(NULLDATA_FILES, iter=ITERS, func=HOM_FUNCS, attr=ATTRIBUTES)
     output: NULLDATA_AGGREGATED,
     shell: "Rscript scripts/aggregate_nulldata.R {input} {output}"
 
