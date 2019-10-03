@@ -42,6 +42,7 @@ NULLDATA_BOOTSTRAP_AGG = osjoin(DERIVED_DIR, "bootstrap", "aggregated_nullboot.c
 PROP_WOMEN_OVER_TIME_PLOT = osjoin(FIG_DIR, 'prop_women_over_time.png')
 NULLDATA_HIST_PLOTS = osjoin(FIG_DIR, 'nullhist', '{iter}', '{func}', '{iter}_{attr}_{func}_nullhist.png')
 NULL_PERCENTILE_PLOTS = osjoin(FIG_DIR, 'nullpercentile', '{attr}_nullpercentile.png')
+BOOTSTRAP_NULL = osjoin(FIG_DIR, 'bootstrapped_nullmodel.png')
 
 
 # The iterations of the summer school
@@ -87,7 +88,8 @@ rule all:
         expand(NULLDATA_HIST_PLOTS, iter=ITERS, func=HOM_FUNCS, attr=ATTRIBUTES),
         expand(NULL_PERCENTILE_PLOTS, attr=ATTRIBUTES),
         expand(NULLDATA_BOOTSTRAP, iter = ITERS),
-        NULLDATA_BOOTSTRAP_AGG
+        NULLDATA_BOOTSTRAP_AGG,
+        BOOTSTRAP_NULL
 
 rule process_data:
     input: CLEANED_RAW_DATA
@@ -146,3 +148,8 @@ rule plot_percentile:
     input: rules.calculate_null_percentiles.output
     output: NULL_PERCENTILE_PLOTS
     shell: 'Rscript scripts/plot_percentile_actual_null.R {input} {wildcards.attr} {output}'
+
+rule plot_bootstrapped_nullmodel:
+    input: rules.aggregate_null_bootstrap.output,
+    output: BOOTSTRAP_NULL,
+    shell: 'Rscript scripts/plot_bootstrapped_nullmodel.R {input} {output}'
