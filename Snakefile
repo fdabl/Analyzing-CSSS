@@ -32,6 +32,10 @@ NULLDATA_FILES = osjoin(DERIVED_DIR, 'nulldata', '{iter}', '{func}', '{iter}_{at
 NULLDATA_AGGREGATED = osjoin(DERIVED_DIR, 'nulldata', 'aggregated_nulldata.csv')
 NULLDATA_PERCENTILE = osjoin(DERIVED_DIR, 'nulldata', 'percentile_nulldata.csv')
 
+NULLDATA_BOOTSTRAP = osjoin(DERIVED_DIR, "bootstrap", "{iter}_nullboot.csv")
+NULLDATA_BOOTSTRAP_AGG = osjoin(DERIVED_DIR, "bootstrap", "aggregated_nullboot.csv")
+
+
 ###############
 # Figures
 ###############
@@ -81,7 +85,9 @@ rule all:
         NULLDATA_PERCENTILE,
         PROP_WOMEN_OVER_TIME_PLOT,
         expand(NULLDATA_HIST_PLOTS, iter=ITERS, func=HOM_FUNCS, attr=ATTRIBUTES),
-        expand(NULL_PERCENTILE_PLOTS, attr=ATTRIBUTES)
+        expand(NULL_PERCENTILE_PLOTS, attr=ATTRIBUTES),
+        expand(NULLDATA_BOOTSTRAP, iter = ITERS),
+        NULLDATA_BOOTSTRAP_AGG
 
 rule process_data:
     input: CLEANED_RAW_DATA
@@ -113,6 +119,18 @@ rule calculate_null_percentiles:
     input: rules.aggregate_nulldata.output
     output: NULLDATA_PERCENTILE
     shell: "Rscript scripts/get_nulldata_percentile.R {input} {output}"
+
+rule homophily_bootstrap:
+    input: rules.generate_nodefiles.output,
+           rules.generate_edgefiles.output
+    output: NULLDATA_BOOTSTRAP
+    shell: "Rscript scripts/nulltest_bootstrap.R {input} {output}"
+
+rule aggregate_null_bootstrap:
+    #input: expand(rules.generate_nulldata.output, iter =
+    input: expand(NULLDATA_BOOTSTRAP, iter=ITERS)
+    output: NULLDATA_BOOTSTRAP_AGG,
+    shell: "Rscript scripts/aggregate_null_bootstrap.R {input} {output}"
 
 rule plot_prop_women_over_time:
     input: PROCESSED_DATA
