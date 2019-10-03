@@ -1,0 +1,134 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+nulldata <- read.csv("/Users/dakotamurray/Documents/Analyzing-CSSS/data/derived/nulldata/percentile_nulldata.csv")
+head(nulldata)
+```
+
+
+```{r}
+nulldata %>%
+  # First filter out the beijing data, its a little messy for the current plots
+  filter(!iter %in% c("2005.Beijing","2006.Beijing", "2007.Beijing")) %>%
+  # Then select the attribute of interest
+  mutate(
+    func = factor(func, labels = c("E-I", "HHI", "Percent Similarity")),
+    attr = factor(attr, labels = c("Country", "Discipline", "Gender", "Position", "Prestige")),
+    to_hide = ifelse(iter %in% c("2005.SantaFe", "2014.SantaFe"), "hid", "vis")
+  ) %>%
+  rowwise() %>%
+  mutate(
+    Year = as.numeric(unlist(strsplit(as.character(iter), ".", fixed = T))[1])
+  ) %>%
+  ggplot(aes(x = Year, y = percentile, color = to_hide, shape = func, group = func)) +
+    geom_line() +  
+    geom_point(size = 2, aes(color = to_hide)) +
+    facet_grid(attr~func) +
+    #scale_color_discrete(name = "Homophily function", labels = c("E-I", "HHI", "Percent Similarity")) +
+    scale_color_manual(values = c("grey", "black")) +
+    #scale_shape_discrete(name = "Homophily function", labels = c("E-I", "HHI", "Percent Similarity")) +
+    theme_minimal() +
+    theme(
+      legend.position = "none",
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 10)
+    ) +
+    labs(y = "Percentile of actual vs. null")
+
+ggsave("~/Desktop/null_percentiles.png")
+```
+
+
+```{r}
+library(boot)
+library(tidyverse)
+nodes <- read.csv("/Users/dakotamurray/Documents/Analyzing-CSSS/data/derived/nodefiles/2007.SantaFe_nodes.csv")
+edges <- read.csv("/Users/dakotamurray/Documents/Analyzing-CSSS/data/derived/edgefiles/2007.SantaFe_edges.csv")
+head(nodes)
+head(edges)
+
+node_gender <- nodes %>%
+  select(id, gender)
+
+
+node_gender %>%
+  rename(attr = "gender")
+
+edge_links <- edges %>%
+  left_join(node_gender, by = c("from" = "id")) %>%
+  left_join(node_gender, by = c("to" = "id")) %>%
+  mutate(cross_link = gender.x != gender.y)
+
+x <- as.numeric(edge_links$cross_link)
+x[is.na(x)] <- 0
+p <- sum(as.numeric(nodes$gender == "Male"), na.rm = T) / dim(nodes)[1]
+m <- 2 * p * (1 - p)
+
+print(paste0("Expected fraction of cross-edges: ", round(m, 2)))
+print(paste0("Actual fraction of cross-edges: ", round(mean(x), 2)))
+
+
+samplemean <-function(x, d) {
+  return(mean(x[d]))
+}
+# obtain bootstrap estimates of the standard deviation of the distribution# of the mean:
+set.seed(1)# set seed so result can be repeated
+b <- boot(x, samplemean, R = 1000)# 1000 replications
+ci <- boot.ci(b, type = "basic") # The bootstrap CI
+ci
+```
+
+
+
+```{r}
+x <- links
+p <- num_male
+m <- 2 * p * (1 - p)
+
+print(paste0("Expected fraction of cross-edges: ", round(m, 2)))
+print(paste0("Actual fraction of cross-edges: ", round(mean(x), 2)))
+
+library(boot)
+samplemean <-function(x, d) {
+  return(mean(x[d]))
+}
+# obtain bootstrap estimates of the standard deviation of the distribution# of the mean:
+set.seed(1)# set seed so result can be repeated
+b <- boot(x, samplemean, R = 1000)# 1000 replications
+ci <- boot.ci(b, type = "basic") # The bootstrap CI
+ci
+```
+
+
+```{r}
+bootdata <- read.csv("/Users/dakotamurray/Documents/Analyzing-CSSS/data/derived/bootstrap/aggregated_nullboot.csv")
+
+bootdata %>%
+  filter(!iter %in% c("2005.Beijing","2006.Beijing", "2007.Beijing")) %>%
+  mutate(
+    attr = factor(attr, labels = c("Discipline", "Gender", "Position", "Prestige"))
+  ) %>%
+  rowwise() %>%
+  mutate(
+    Year = unlist(strsplit(as.character(iter), ".", fixed = T))[1]
+  ) %>%
+  ggplot(aes(x = as.numeric(Year), y = actual)) +
+  geom_errorbar(aes(ymin = ci.lower, ymax = ci.upper), width = 0.4) +
+  geom_point(size = 3) +
+  scale_x_continuous(breaks = c(2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019)) +
+  geom_segment(aes(x = as.numeric(Year) - 0.4, xend = as.numeric(Year) + 0.4, y = expected, yend = expected), color = "orange", size = 1) +
+  facet_wrap(~attr, ncol = 1) +
+  guides(color = F) +
+  labs(x = "Year",
+       y = "Actual") +
+  theme_minimal() +
+  theme(
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 11),
+    strip.text = element_text(face = "bold", size = 12)
+  )
+
+ggsave("~/Desktop/acsss_tests_bootstrap.png", height = 10, width = 8)
+```
