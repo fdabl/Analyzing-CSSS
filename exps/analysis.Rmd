@@ -1,0 +1,453 @@
+---
+title: "Descriptive Analysis of CSSS Data"
+date: 9th August, 2019
+author: Fabian Dablander
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align = 'center')
+```
+
+# Data Preparation
+```{r}
+library('dplyr')
+library('papaja')
+library('ggplot2')
+library('SentimentAnalysis')
+
+
+get_sentiment <- function(text) {
+  analyzeSentiment(text)$SentimentQDAP
+}
+
+dat <- read.csv('data/cleaned_csss-all.csv', na.strings = '') %>% 
+  mutate(
+    Bio_sentiment = get_sentiment(as.character(Biography)),
+    Iteration = interaction(Year, Location),
+    Country_University = as.character(Country_University),
+    Country_University = ifelse(
+      Country_University %in% c('US', 'USA', 'United States'), 'USA', Country_University
+    )
+  )
+```
+
+
+# Data Analysis
+## Descriptive Statistics
+Here we look at a few summary statistics and how they have changed over the years.
+
+```{r Summary-Statistics, results = 'asis'}
+dat_avg <- dat %>%
+  group_by(Year, Location) %>% 
+  summarize(
+    prop_female = mean(Gender == 'Female', na.rm = TRUE),
+    avg_group_size = mean(Size, na.rm = TRUE),
+    prop_US = mean(Country_University %in% c('US', 'USA', 'United States')),
+    nr_projects = length(unique(Title)),
+    nr_participants = length(unique(Name)),
+    nr_projects_per_part = nr_participants / nr_projects,
+    prop_PhD = mean(Position == 'Student', na.rm = TRUE), # this overcounts; fix!
+    prop_postdoc = mean(Position == 'PostDoc', na.rm = TRUE),
+    prop_industry = mean(Position == 'Industry', na.rm = TRUE),
+    avg_sentiment = mean(Bio_sentiment, na.rm = TRUE)
+  ) %>% 
+  mutate(
+    Iteration = factor(interaction(Year, Location))
+  )
+
+tab_names <- c(
+  'Year', 'Location', '%Female', 'Avg_Group_Size', '%US', '#Projects',
+  '#Participants', '#Proj_per_Part', '%PhD', '%PostDoc', '%Industry', 'Avg_Sentiment'
+)
+apa_table(setNames(dat_avg, tab_names))
+```
+
+Note that the summer school of 2011 apparently had only one project in which everybody took part. The percent of women participants has become close to what it should be in the last two years. There is some issues with the years 2012-2014 with respect to the number of PhD students.
+
+## Proportion of Females across Time
+```{r}
+dat_avg <- dat_avg %>%
+  mutate(
+    Iteration = gsub("[.]", " ", Iteration)
+  )
+ggplot(filter(dat_avg, Iteration != '2005.Beijing'), aes(x = Iteration, y = prop_female)) +
+  geom_bar(stat = 'identity', fill = "orange", alpha = 0.8, color = "black") +
+  coord_flip() +
+  theme_minimal() +
+  ylab('% Women') +
+  xlab('') +
+  scale_y_continuous(limits = c(0, .6), breaks = scales::pretty_breaks(n = 10)) +
+  geom_hline(yintercept = .5, linetype = 'dashed', size = 1.2) +
+  geom_text(x = 8, y = 0.55, label = "Parity") +
+  ggtitle('Proportion of Women across CSSS Iterations') +
+  theme(
+    axis.text.x = element_text(angle = 90, size = 10, vjust = 0.5),
+    axis.text.y = element_text(size = 14),
+    axis.title.x = element_text(size = 14),
+    plot.title = element_text(hjust = .5, size = 16)
+  )
+
+ggsave("~/Desktop/csss_gender_plot.png", height = 8, width = 8)
+```
+
+## Disciplines across Time
+We need to be careful since some people can come from more than one discipline.
+```{r}
+library('stringr')
+
+create_disciplines_dat <- function(dat) {
+  dat_disciplines <- c()
+  iterations <- unique(dat$Iteration)
+  
+  for (school in iterations) {
+    disciplines <- str_split(filter(dat, Iteration == school)$Discipline_isced, ';|,', simplify = TRUE)
+    disciplines <- str_to_title(str_trim(disciplines))
+    disciplines <- disciplines[disciplines != '']
+    
+    if (!all(is.na(disciplines))) {
+      tab <- table(disciplines)
+      d <- cbind(school, data.frame(tab), as.numeric(tab) / sum(as.numeric(tab)))
+      dat_disciplines <- rbind(dat_disciplines, d)
+    }
+  }
+  
+  dat_disciplines
+}
+
+dat_disciplines <- create_disciplines_dat(dat)
+```
+
+```{r, fig.width = 10, fig.height = 14}
+colnames(dat_disciplines) <- c('Iteration', 'Disciplines', 'Frequency', 'Proportion')
+uniq_disciplines <- as.character(unique(dat_disciplines$Disciplines))
+sorted_levels <- uniq_disciplines[order(nchar(uniq_disciplines), uniq_disciplines, decreasing = TRUE)]
+dat_disciplines$Disciplines <- factor(dat_disciplines$Disciplines, levels = sorted_levels)
+
+ggplot(dat_disciplines, aes(x = Disciplines, y = Proportion)) +
+  geom_bar(stat = 'identity') +
+  facet_wrap(~ Iteration) +
+  coord_flip() +
+  theme_bw() +
+  ylab('') +
+  theme(axis.text.x = element_text(angle = 90, size = 6))
+```
+
+```{r}
+iter <- c('2006.Santa Fe', '2010.Santa Fe', '2018.Santa Fe')
+dat_disciplines_selection <- dat_disciplines %>%
+  filter(Iteration %in% iter) %>%
+  rowwise() %>%
+  mutate(
+    Iteration = factor(Iteration, levels = iter),
+    Iteration = gsub("[.]", " ", Iteration)
+    )
+  
+ggplot(dat_disciplines_selection, aes(x = Disciplines, y = Proportion)) +
+  geom_bar(stat = 'identity', alpha = 0.8, fill = "dodgerblue4", color = "black") +
+  facet_wrap(~ Iteration) +
+  coord_flip() +
+  theme_minimal() +
+  ylab('Proportion') +
+  xlab('') +
+  ggtitle('Prevalence of disciplines across three years') +
+  guides(fill = FALSE) + 
+  theme(
+    axis.text.x = element_text(angle = 90, size = 8),
+    axis.text.y = element_text(size = 10),
+    plot.title = element_text(hjust = .5, size = 16)
+  )
+
+ggsave("~/Desktop/csss_disciplines_three_years.png", height = 8, width = 10)
+```
+
+## Country across Time
+```{r}
+euro.countries <- c(
+  "Austria", "Belgium", "Czech Republic", "Denmark", "Estonia", "France",
+  "Germany", "Hungary", "Iceland", "Ireland", "Italy", "Netherlands", "Norway",
+  "Poland", "Portugal", "Russia", "Serbia", "Serbia and Montenegro", "Slovenia",
+  "Spain", "Sweden", "Switzerland", "The Netherlands", "Turkey", "UK", "United Kingdom"
+)
+
+afri.countries <- c("Nigeria", "South Africa")
+asian.countries <- c(
+  "China", "India", "Iran", "Israel", "Japan", "Lebanon", "Hong Kong",
+  "Pakistan", "South Korea", "Singapore", "Signapore", "Philippines"
+)
+
+s.amer.countries <- c("Argentina", "Argentinia", "Brazil", "Colombia", "Columbia", "Chile", "Venezuela")
+n.amer.countries <- c("Canada", "Canda", "Costa Rica", "Guatemala", "Mexico", "United States", "US", "USA")
+
+get_continent <- function(country) {
+  if (country %in% euro.countries) {
+    res <- 'Europe'
+  } else if (country %in% afri.countries) {
+    res <- 'Africa'
+  } else if (country %in% asian.countries) {
+    res <- 'Asia'
+  } else if (country %in% s.amer.countries) {
+    res <- 'South America'
+  } else if (country %in% n.amer.countries) {
+    res <- 'North America'
+  } else if (country %in% 'Australia') {
+    res <- 'Australia'
+  } else if (country %in% 'New Zealand') {
+    res <- 'New Zealand'
+  } else {
+    res <- NA
+  }
+  
+  res
+}
+
+dat <- dat %>% 
+  mutate(
+    Continent_University = Vectorize(get_continent)(Country_University),
+    Continent_University = factor(
+      Continent_University, levels = sort(unique(Continent_University), decreasing = TRUE)
+    )
+  )
+
+ggplot(dat, aes(x = Continent_University)) +
+  geom_bar() +
+  facet_wrap(~ Iteration) +
+  coord_flip() +
+  theme_bw() +
+  ylab('') +
+  theme(axis.text.x = element_text(angle = 90, size = 6))
+```
+
+## Gini Coefficient
+```{r}
+library('DescTools')
+
+DISCIPLINES <- as.character(unique(dat_disciplines$Disciplines))
+map <- list()
+
+i <- 1
+for (d in DISCIPLINES) {
+  map[[d]] <- i
+  i <- i + 1
+}
+
+dat_dsum<- dat_disciplines %>% 
+  mutate(
+    Disciplines_int = map[as.character(Disciplines)]
+  ) %>% 
+  group_by(Iteration) %>% 
+  summarize(gini = Gini(Disciplines_int)) %>% 
+  mutate(
+    Iteration = factor(Iteration, levels = sort(as.character(Iteration))),
+    Iteration = gsub("[.]", " ", Iteration)
+  )
+
+ggplot(dat_dsum, aes(x = Iteration, y = gini)) +
+  geom_point(stat = 'identity') +
+  geom_line(group = 1) +
+  theme_bw() +
+  xlab('') +
+  ggtitle('Inequality of Discipline Prevalence across Iterations') +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10), limits = c(0, 1)) +
+  ylab('Gini Coefficient') +
+  theme(
+    axis.text.x = element_text(angle = 90, size = 12),
+    axis.title.y = element_text(angle = 90, size = 14),
+    plot.title = element_text(hjust = .5, size = 16)
+  )
+
+ggplot(dat_dsum, aes(x = Iteration, y = gini)) +
+  geom_bar(stat = 'identity', fill = "forestgreen", alpha = 0.7, color = "black") +
+  theme_minimal() +
+  xlab('') +
+  coord_flip() +
+  ggtitle('Inequality of Discipline Prevalence across Iterations') +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10), limits = c(0, .6)) +
+  ylab('Gini Coefficient') +
+  theme(
+    axis.text.x = element_text(angle = 90, size = 10),
+    axis.text.y = element_text(size = 14),
+    axis.title.x = element_text(size = 16),
+    plot.title = element_text(hjust = .5, size = 16)
+  )
+
+ggsave("~/Desktop/csss_gini_plot.png", height = 8, width = 8)
+```
+
+## Survey Responses
+First, we rename the columns to have more concise names. In contrast to the previous code, where we have used the first discipline as their main discipline, we now duplicate a participant's entry for each discipline s/he indicated.
+
+```{r}
+new_names <- c(
+  'Timestamp', 'Name', 'Year_Incorrect', 'Year', 'Location', 'Discipline', 'Discipline_isced',
+  'Closeness_Projects', 'Communication_Difficulty', 'Input_Usefulness', 'CSSS_Influence', 'Published',
+  'Publishing_Difficulty', 'Continued_Collaboration', 'Interdisciplinary_Thoughts'
+)
+
+choose_first <- function(disciplines) {
+  short_disc <- str_split(disciplines, ';|,', simplify = TRUE)
+  short_disc[, 1]
+}
+
+dats <- read.csv('data/csss-survey.csv')
+colnames(dats) <- new_names
+
+dats <- dats %>%
+  mutate(
+    Published = ifelse(Published == 'Yes', 1, 0),
+    Continued_Collaboration = ifelse(Continued_Collaboration == 'Yes', 1, 0),
+    Iteration = interaction(Year, Location),
+    First_Discipline = factor(choose_first(Discipline_isced))
+  )
+
+
+# Duplicates the entries for each discipline
+add_discipline_entries <- function(dats) {
+  new_dat <- c()
+  
+  for (i in seq(nrow(dats))) {
+    
+    row <- dats[i, ]
+    disc <- row$Discipline_isced
+    disc_split <- str_split(disc, ';|,', simplify = TRUE)
+    
+    for (j in seq(length(disc_split))) {
+      rowj <- row
+      rowj$Discipline_isced <- str_trim(disc_split[j])
+      
+      new_dat <- rbind(new_dat, rowj)
+    }
+  }
+  
+  data.frame(new_dat)
+}
+
+datsm <- add_discipline_entries(dats)
+dats_disciplines <- create_disciplines_dat(dats)
+```
+
+
+## CSSS Influence on Discipline
+The figure below shows how strongly different disciplines have been influenced by the CSSS summer school. We use all disciplines a participant has indicated. It seems that the social and behavioural sciences, the life sciences, and mathematics and statistics have been more influenced then the physical sciences.
+
+```{r}
+ggplot(filter(datsm, Discipline_isced != ''),
+       aes(x = Discipline_isced, y = CSSS_Influence, fill = Discipline_isced)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_point(position = position_jitter(width = .3, height = .05), size = .6, color = 'black') +
+  theme_bw() +
+  ylab('Influence of CSSS') +
+  xlab('') +
+  ggtitle('Influence of the CSSS by Discipline') +
+  theme(
+    axis.text.x = element_text(angle = 90, size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 14),
+    plot.title = element_text(hjust = .5, size = 16),
+    legend.position = 'None'
+  ) +
+  coord_flip()
+
+head(dats)
+```
+
+We can make the same plots with the usefulness of input, continued collaboration, and communication difficulty.
+```{r}
+ggplot(filter(datsm, Discipline_isced != ''),
+       aes(x = Discipline_isced, y = Input_Usefulness, fill = Discipline_isced)) +
+  geom_boxplot() +
+  geom_point(position = 'jitter') +
+  theme_bw() +
+  ylab('Usefulness of Input') +
+  xlab('Discipline') +
+  ggtitle('Input Usefulness Other Disciplines by Discipline') +
+  theme(
+    axis.text.x = element_text(angle = 90, size = 12),
+    plot.title = element_text(hjust = .5, size = 16),
+    legend.position = 'None'
+  ) +
+  coord_flip()
+
+dat_col <- filter(datsm, Discipline_isced != '') %>%
+  group_by(Discipline_isced) %>%
+  summarize(
+    mean_collaboration = mean(Continued_Collaboration),
+    sd_collaboration = sd(Continued_Collaboration)
+  )
+
+
+ggplot(dat_col, aes(x = Discipline_isced, y = mean_collaboration, color = Discipline_isced)) +
+  geom_point() +
+  geom_errorbar(
+    aes(
+      ymin = ifelse(mean_collaboration - sd_collaboration < 0, 0, mean_collaboration - sd_collaboration),
+      ymax = ifelse(mean_collaboration + sd_collaboration > 1, 1, mean_collaboration + sd_collaboration)
+    )
+  ) +
+  theme_bw() +
+  ylab('% Continued Collaboration') +
+  xlab('Discipline') +
+  ggtitle('Continued Collaboration After CSSS') +
+  theme(
+    axis.text.x = element_text(angle = 90, size = 12),
+    plot.title = element_text(hjust = .5, size = 16),
+    legend.position = 'None'
+  ) +
+  coord_flip()
+
+
+ggplot(filter(datsm, Discipline_isced != ''),
+       aes(x = Discipline_isced, y = Communication_Difficulty, fill = Discipline_isced)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_point(position = position_jitter(width = .3, height = .05), size = .6, color = 'black') +
+  theme_bw() +
+  ylab('Difficulty of Communication') +
+  xlab('') +
+  ggtitle('Difficulty of Communication by Discipline') +
+  theme(
+    axis.text.x = element_text(angle = 90, size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 14),
+    plot.title = element_text(hjust = .5, size = 16),
+    legend.position = 'None'
+  ) +
+  coord_flip()
+```
+
+### Word cloud
+```{r}
+library('tm')
+library('wordcloud')
+library('RColorBrewer')
+
+docs <- Corpus(VectorSource(as.character(dats$Interdisciplinary_Thoughts)))
+docs <- tm_map(docs, removePunctuation)
+docs <- tm_map(docs, removeWords, c(stopwords('english'), 'can'))
+
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words = 100, random.order = FALSE, rot.per = 0.35, 
+          colors = brewer.pal(8, "Dark2"))
+```
+
+
+```{r}
+"5 stars, would recommend"
+"Useful from an academic perspective, less useful from a professional perspective"
+"Difficult to get credited for it by traditional systems of evaluation."
+"Essential. Not always straight-forward, but totally worth the effort"
+"Best thing in the world: I still have life-long friendship and collaboration with SFI pals!"
+"Very necessary if the right attitude is present. Multidisciplinary is not just about disciplines coming together 'because'. The scientific question should come first."
+"Hihgly desirable but the academic system favours specialization over insterdisciplinary research"
+"You asked about group projects. I don't recall group projects back in 1990."
+"Necessary for me to be happy"
+```
+
+
