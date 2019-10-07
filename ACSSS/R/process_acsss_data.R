@@ -10,10 +10,10 @@ process_acsss_data <- function(unprocessed) {
       Iteration = gsub(" ", "", Iteration, fixed = T),
       Country_University = as.character(Country_University),
       Country_University = ifelse(
-        Country_University %in% c('US', 'USA', 'United States'), 'USA', Country_University
+        tolower(Country_University) %in% c('us', 'usa', 'united states'), 'USA', Country_University
       ),
       Prestige = ifelse(Prestige == "Top 50", "Top 50", "Not Top 50"),
-      Position = ifelse(tolower(Position) %in% c("student", "postdoc", "professor"),
+      Position = ifelse(tolower(Position) %in% c("student", "postdoc", "professor", "researcher"),
                         "academia",
                         "not academia"),
       Discipline_isced = ifelse(Discipline_isced %in%

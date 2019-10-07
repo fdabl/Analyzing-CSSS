@@ -5,122 +5,51 @@ output: html_notebook
 ---
 
 ```{r}
-library(DiagrammeR)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(grDevices)
-require(hhi)
-require(data.table)
+library(tidyverse)
+library(ACSSS)
 theme_set(theme_bw())
 ```
 
 
 ```{r read_data, echo=FALSE}
-clean_all <- read.csv("~/Documents/Analyzing-CSSS/data/cleaned_csss-all.csv")
-clean_all$iteration <- paste(clean_all$Year, clean_all$Location, sep = ".")
+path <- '~/Documents/Analyzing-CSSS/data/raw/cleaned_csss-all.csv'
+dat <- read.csv(path)
 
-no.2011 <- clean_all %>%
-  filter(Year != 2011) %>%
-  arrange(iteration)
+# Load an iteration node and edge file
+node_path <- "~/Documents/Analyzing-CSSS/data/derived/nodefiles/2017.SantaFe_nodes.csv"
+nodes <- read.csv(node_path) %>%
+  #mutate(id = paste0("", id)) %>%
+  select(-X)
 
-df <- no.2011
+edge_path <- "~/Documents/Analyzing-CSSS/data/derived/edgefiles/2017.SantaFe_edges.csv"
+edges <- read.csv(edge_path) %>%
+  select(-X)
+
+head(nodes)
+head(edges)
 ```
 
-So the first thing that we will do is to generate a node file.
+The first thing that we want to do is save the actual count of the metric we are using. here, we will use the very simple metric of "number of different-gender connections between participants"
 ```{r}
-build_node_dataframe <- function(df, iter) {
-  disc.col.pal <- c(
-                  "Humanities" = "#771155", 
-                  "Journalism and information" = "#AA4488", 
-                  "Law" = "#CC99BB", 
-                  "Social services" = "#114477", 
-                  "#4477AA", "Arts" = "#77AADD", 
-                  "Physical sciences" = "#117777", "Life sciences" = "#44AAAA", 
-                  "#77CCCC", "Agriculture and forestry and fishery" = "#117744", "#44AA77", "Environmental protection" = "#88CCAA", 
-                  "Computing" = "#777711", "Engineering and engineering trades" = "#AAAA44", 
-                  "Mathematics and statistics" = "#DDDD77", "Architecture and building" = "#774411", "#AA7744", "Business and administration" = "#DDAA77",
-                  "Social and behavioural sciences" =  "#771122", "#AA4455", 
-                  "Health" = "#DD7788"
-  ) # end disc.col.pal
-    
-  partic.df <- df %>%
-    filter(iteration == as.character(iter)) %>%
-    select(Name, Discipline_isced, Nationality, Gender, Position, Country_University, Prestige, Location) %>%
-    unique() %>%
-    mutate(
-      Name = as.factor(Name),
-      name.id = as.numeric(droplevels(Name))) %>%
-    separate(col = Discipline_isced, into = c("disc1", "disc2"), 
-             sep = "[;,]", extra = "drop", remove = FALSE, fill = "right")
+nodes.only.gender <- nodes %>% select(id, gender) %>% mutate(gender = ifelse(is.na(gender), "UNK", gender))
+dist <- sapply(c(1:10), function(x) {
   
-  partic.df$disc.color <- disc.col.pal[partic.df$disc1]
-  partic.df$disc.color[is.na(partic.df$disc.color)] <- "#888888"
-  
-  node.df <- create_node_df(
-      n = nrow(partic.df),
-      node_id = partic.df$name.id,
-      label = partic.df$Name,
-      fillcolor = partic.df$disc.color,
-      year = as.character(iter),
-      discp = partic.df$Discipline_isced, 
-      nat = partic.df$Nationality, 
-      pos.var = partic.df$Position, 
-      cntry = partic.df$Country_University, 
-      prstg = partic.df$Prestige,
-      gender = partic.df$Gender
-    )
-  
-  return(node.df)
-}
+  nodes.only.gender$gender <- nodes.only.gender$gender[sample(nrow(nodes.only.gender))]
 
-build_edge_dataframe <- function(df, iter) {
-  edge.df.temp <- df %>%
-    # Filter by the year
-    filter(iteration == iter) %>%
-    # Select only project and person info
-    select(Title, name1 = Name, Year) %>%
-    # Re-join the original dataframe
-    left_join(df, by = c("Title", "Year")) %>%
-    # Remove duplicate people
-    filter(name1 != Name) %>%
-    # Select all relevant info
-    select(Title, name1, name2 = Name, Topic, Topic_isced, Year) %>%
-    arrange(name1) %>%
-    mutate(name1 = as.factor(name1),
-           name2 = as.factor(name2),
-           name.id1 = as.numeric(droplevels(name1)),
-           name.id2 = as.numeric(droplevels(name2)),
-           name.link = paste(name.id1, name.id2, sep = "_"))
+  edges.gender <- edges %>%
+    left_join(nodes.only.gender, by = c("from" = "id")) %>%
+    left_join(nodes.only.gender, by = c("to" = "id"), suffix = c(".from", ".to"))
   
-  edge.df <- edge.df.temp %>%
-    select(name.id1, name.id2) %>%
-    mutate(name.link = ifelse(name.id1<name.id2, paste(name.id1, name.id2, sep = "_"), paste(name.id2, name.id1, sep = "_"))) %>%
-    select(name.link) %>%
-    unique() %>%
-    left_join(edge.df.temp, by = "name.link") %>%
-    separate(col = Topic_isced, into = c("topic.disc1", "topic.disc2"), 
-             sep = "[;,]", extra = "drop", remove = FALSE, fill = "right")
-  
-  edge.df$edge.color <- disc.col.pal[edge.df$topic.disc1]
-  edge.df$edge.color[is.na(edge.df$edge.color)] <- "#888888"
-  
-  edge.df <- create_edge_df(
-    from = edge.df$name.id1,
-    to = edge.df$name.id2,
-    color = edge.df$edge.color,
-    dir = rep("none", length(edge.df$name.id1)))
-  
-  return(edge.df)
-}
+  #return(sum(edges.gender$gender.from != edges.gender$gender.to, na.rm = T))
+  return(mean(get_ei(nodes.only.gender, edges, "gender")$ei, na.rm = T))
+})
 
-node.df <- build_node_dataframe(df, iter = "2013.Santa Fe")
-edge.df <- build_edge_dataframe(df, iter = "2013.Santa Fe")
-head(node.df)
-head(edge.df)
+hist(dist)
+```
 
-graph <- create_graph(nodes_df = node.df, 
-                      edges_df = edge.df)
+```{r}
+mean(get_ei(nodes, edges, "gender")$ei, na.rm = T)
+
 ```
 
 ```{r}
