@@ -52,6 +52,8 @@ plot_discp_counts_by_topic <- function(counts) {
 }
 
 counts <- count_disciplines_per_group(processed, groups)
-ggsave("figures/counts_per_year.png",plot_discp_counts_per_year(counts))
-ggsave("figures/counts_by_topic.png", plot_discp_counts_by_topic(counts))
+ggsave("figures/counts_per_year.png", plot_discp_counts_per_year(counts), 
+       width = 3.35, height = 3.89, scale = 1.75)
+ggsave("figures/counts_by_topic.png", plot_discp_counts_by_topic(counts), 
+       width = 3.75, height = 3.89, scale = 1.75)
 
