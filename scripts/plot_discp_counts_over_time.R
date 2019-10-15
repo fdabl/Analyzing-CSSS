@@ -14,31 +14,44 @@ count_disciplines_per_group <- function(data, groups) {
   data$group.id <- groups
   discp.count <- data %>% group_by(group.id) %>%
     summarize(count1 = n_distinct(discp1),
-              count2 = n_distinct(discp2),
+              #count2 = n_distinct(discp2),
               year = first(Year), 
               topic1 = first(topic1),
               topic2 = first(topic2), 
               Location = first(Location), 
               Year = first(Year)) %>%
     unite(Iteration_display, Year, Location, sep = " ")
-  discp.count$total.count <- discp.count$count1 + discp.count$count2
+  #discp.count$total.count <- discp.count$count1 + discp.count$count2
   return(discp.count)
 }
 
 
 
 plot_discp_counts_per_year <- function(counts) {
-  return(ggplot(counts, aes(x = Iteration_display, y = total.count)) +
+  return(ggplot(counts, aes(x = Iteration_display, y = count1)) +
            geom_jitter(aes(color = Iteration_display)) +
            geom_boxplot(aes(color = Iteration_display, alpha = 0.5)) +
            theme_bw() +
            coord_flip() +
            guides(color = F, alpha = F) +
-           labs(y = "Unique Discplines", x = "")
+           labs(y = "Unique Disciplines", x = "", 
+                title = "Number of unique disciplines in a group")
   )
+}
+
+plot_discp_counts_by_topic <- function(counts) {
+  return(ggplot(data = counts, aes(x = topic1, y = count1, group = topic1, color = topic1)) +
+           geom_jitter() +
+           geom_boxplot(alpha = 0.5) +
+           theme_bw() +
+           coord_flip() +
+           guides(color = F, alpha = F) +
+           labs(y = "Unique Disciplines", x = "", 
+                title = "Number of average unique disciplines")
+         )
 }
 
 counts <- count_disciplines_per_group(processed, groups)
 ggsave("figures/counts_per_year.png",plot_discp_counts_per_year(counts))
-
+ggsave("figures/counts_by_topic.png", plot_discp_counts_by_topic(counts))
 
