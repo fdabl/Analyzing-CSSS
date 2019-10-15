@@ -40,6 +40,10 @@ get_all_eigencent <- function(df) {
   for(i in 2:length(iters)) {
     all.ec <- rbind(all.ec, get_eigen_by_year(df, iters[i]))
   }
+  all.ec <- all.ec %>%
+    mutate(iteration = str_replace(iteration, "[.]", ",")) %>%
+    separate(iteration, c("year", "location"), sep = ",") %>%
+    filter(location == "Santa Fe", year != "2005")
   return(all.ec)
 }
 all.ec <- get_all_eigencent(processed)
@@ -48,9 +52,16 @@ plot_eigen_lines <- function(df) {
   graph.df <- df %>%
     filter(discp %in% c("Computing", "Humanities", "Life sciences", "Physical sciences", "Social and behavioral sciences"))
   return(ggplot(data = graph.df) +
-           geom_line(aes(x = iteration, y = mean.ec, color = discp, group = discp))
+           geom_line(aes(x = year, y = mean.ec, color = discp, group = discp)) +
+           geom_point(aes(x = year, y = mean.ec, color = discp, group = discp), size = 3) +
+           scale_color_discrete(name = "Discipline") +
+           labs(x = "Year", y = "Eigencentrality", title = "Eigencentrality of disciplines") +
+           theme_bw()
          )
 }
 
+all.ec <- get_all_eigencent(processed)
+ggsave("figures/eigencentrality.png", plot_eigen_lines(all.ec), 
+       width = 5, height = 2.5, scale = 1.75)
 
 
