@@ -17,7 +17,7 @@ library(grDevices)
 require(hhi)
 require(data.table)
 library(networkD3)
-library(webshot)
+library(webshot2)
 library(rmarkdown)
 
 if (str_detect(getwd(), pattern = "krfurlong")){library(extrafont)}
@@ -25,14 +25,9 @@ theme_set(theme_bw())
 ```
 
 ```{r read_data, echo=FALSE}
-all <- read.csv("data/csss-all.csv")
-dakota <- read.csv("data/csss-dakota.csv")
-emily <- read.csv("data/csss-emily.csv")
-fabian <- read.csv("data/csss-fabian.csv")
-jackie <- read.csv("data/csss-jackie.csv")
-kyle <- read.csv("data/csss-kyle.csv")
+clean_all <- read.csv("../data/raw/cleaned_csss-all.csv")
 
-clean_all <- read.csv("data/cleaned_csss-all.csv")
+#clean_all <- read.csv("data/cleaned_csss-all.csv")
 clean_all$iteration <- paste(clean_all$Year, clean_all$Location, sep = ".")
 
 no.2011 <- clean_all %>%
@@ -149,7 +144,7 @@ graph_network <- function(graph_code, save.location = NA) {
   
 }
 
-graph_network(generate_csss_network_df(df = clean_all, iter = "2011.Santa Fe", colorByDisc = TRUE, colorEdges = TRUE, hideNames = TRUE))
+graph_network(generate_csss_network_df(df = clean_all, iter = "2014.Santa Fe", colorByDisc = TRUE, colorEdges = TRUE, hideNames = TRUE))
 
 #df <- clean_all
 get_node_df(generate_csss_network_df(df = clean_all, iter = "2018.Santa Fe", colorByDisc = TRUE, colorEdges = TRUE, hideNames = TRUE))
@@ -157,21 +152,24 @@ get_node_df(generate_csss_network_df(df = clean_all, iter = "2018.Santa Fe", col
 
 ```{r ALL OF THE NETWORK PNGS, echo = FALSE}
 iter.list <- levels(as.factor(clean_all$iteration))
-filename.list <- paste0("csss_", str_replace(str_replace(iter.list, pattern = " ", ""), pattern = "\\.", replacement = "_"), "_nw.png")
-filebasepath <- "./img/"
+filename.list <- paste0("csss_", str_replace(str_replace(iter.list, pattern = " ", ""), pattern = "\\.", replacement = "_"), "_nw_withLegend.png")
+filebasepath <- "../img/"
+# C:\Users\krfur\Documents\Analyzing-CSSS\img
+custom.html <- '<div class = "row"><div class = "col-md-8">\n```{r echo=FALSE, fig.align="center",fig.height=4.7}\ncsss.graph\n```\n</div><div class = "col-md-4"><br><br><img src="C:/Users/krfur/Documents/Analyzing-CSSS/img/CSSS_networks_legend.png"></img></div></div>'
+
+library(rvest)
 
 for (i in 2:length(iter.list)){
   csss.graph <- graph_network(graph_code = generate_csss_network_df(df = clean_all, iter = paste0(iter.list[i]), 
                                                                   colorByDisc = TRUE, colorEdges = TRUE, hideNames = TRUE))
 
   rmd_name <- tempfile(fileext = ".Rmd")
-  cat("```{r echo=FALSE}\ncsss.graph\n```", file = rmd_name)
-  html_name <- tempfile(fileext = ".html")
+  cat(custom.html, file = rmd_name)
+  html_name <- tempfile(pattern = iter.list[i], fileext = ".html")
   render(rmd_name, output_format = "html_document", output_file = html_name)
   
-  
-  webshot(html_name, file = paste0(filebasepath, filename.list[i]), 
-          selector = "body > div.container-fluid.main-container", )
+  #webshot2::webshot(html_name, file = paste0(filebasepath, filename.list[i]),
+   #       selector = "body > div.container-fluid.main-container")
 }
 
 ```
