@@ -28,12 +28,14 @@ count_disciplines_per_group <- function(data, groups) {
 
 
 plot_discp_counts_per_year <- function(counts) {
-  return(ggplot(counts, aes(x = Iteration_display, y = count1)) +
-           geom_jitter(aes(color = Iteration_display)) +
-           geom_boxplot(aes(color = Iteration_display, alpha = 0.5)) +
+  counts <- counts %>%
+    filter(!str_detect(Iteration_display, "Beijing"))
+  return(ggplot(counts, aes(x = Iteration_display, y = count1, fill = Iteration_display)) +
+           geom_boxplot(outlier.shape = NA) +
+           geom_jitter(color = "black", size = 0.6, alpha = 0.6) +
            theme_bw() +
            coord_flip() +
-           guides(color = F, alpha = F) +
+           guides(fill = F, alpha = F) +
            labs(y = "Unique Disciplines", x = "", 
                 title = "Number of unique disciplines in a group")
   )
