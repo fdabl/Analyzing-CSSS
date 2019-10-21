@@ -42,12 +42,12 @@ plot_discp_counts_per_year <- function(counts) {
 }
 
 plot_discp_counts_by_topic <- function(counts) {
-  return(ggplot(data = counts, aes(x = topic1, y = count1, group = topic1, color = topic1)) +
-           geom_jitter() +
-           geom_boxplot(alpha = 0.5) +
+  return(ggplot(data = counts, aes(x = topic1, y = count1, group = topic1, fill = topic1)) +
+           geom_boxplot(outlier.shape = NA) +
+           geom_jitter(color = "black", size = 0.6, alpha = 0.6) +
            theme_bw() +
            coord_flip() +
-           guides(color = F, alpha = F) +
+           guides(fill = F, alpha = F) +
            labs(y = "Unique Disciplines", x = "", 
                 title = "Number of average unique disciplines")
          )
