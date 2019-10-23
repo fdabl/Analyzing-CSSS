@@ -34,6 +34,15 @@ get_eigen_by_year <- function(df, iter) {
   return(ec)
 }
 
+get_prop_people_by_year <- function(df) {
+  prop.df <- df %>% filter(Location == "Santa Fe", Year != "2005") %>%
+    group_by(Year, discp1) %>%
+    summarize(n.ind = n_distinct(Name)) %>%
+    group_by(Year) %>% 
+    mutate(total = sum(n.ind)) %>%
+    mutate(prop = n.ind/total)
+}
+
 get_all_eigencent <- function(df) {
   iters <- unique(df$Iteration)
   all.ec <- get_eigen_by_year(df, iters[1])
@@ -48,9 +57,11 @@ get_all_eigencent <- function(df) {
 }
 all.ec <- get_all_eigencent(processed)
 
+#get separate graph for eigencentrality scores
 plot_eigen_lines <- function(df) {
   graph.df <- df %>%
-    filter(discp %in% c("Computing", "Humanities", "Life sciences", "Physical sciences", "Social and behavioral sciences"))
+    filter(discp %in% c("Computing", "Life sciences", "Physical sciences", "Social and behavioral sciences", 
+                        "Mathematics and statistics", "Engineering and engineering trades"))
   return(ggplot(data = graph.df) +
            geom_line(aes(x = year, y = mean.ec, color = discp, group = discp)) +
            geom_point(aes(x = year, y = mean.ec, color = discp, group = discp), size = 3) +
@@ -60,8 +71,48 @@ plot_eigen_lines <- function(df) {
          )
 }
 
+#get separate graph for proportion of participant lines
+plot_prop_lines <- function(df) {
+  graph.df <- df %>%
+    filter(discp1 %in% c("Computing", "Life sciences", "Physical sciences", "Social and behavioral sciences", 
+                        "Mathematics and statistics", "Engineering and engineering trades"))
+  return(ggplot(data = graph.df) +
+           geom_line(aes(x = Year, y = prop, color = discp1, group = discp1)) +
+           geom_point(aes(x = Year, y = prop, color = discp1, group = discp1), size = 3) +
+           scale_color_discrete(name = "Discipline") +
+           labs(x = "Year", y = "Proportion of participants", title = "Proportion of participants by disciplines") +
+           theme_bw()
+  )
+}
+
+plot_eigen_and_prop <- function(all.ec, prop.discp) {
+  graph.df <- merge(all.ec, prop.discp, by = c("year", "discp")) %>%
+    gather(type, value, mean.ec, prop) %>%
+    select(year, discp, type, value) %>%
+    filter(discp %in% c("Computing", "Life sciences", "Physical sciences", "Social and behavioral sciences", 
+                         "Mathematics and statistics", "Engineering and engineering trades"))
+  
+  labels <- c(mean.ec = "Eigencentrality", prop = "Proportion of participants")
+  return(ggplot(graph.df, aes(x=year, y=value, color = discp, group = discp)) +
+           geom_line() +
+           geom_point(size = 3) +
+           facet_grid(type ~ ., labeller = labeller(type = labels)) +
+           scale_color_discrete(name = "Discipline") +
+           labs(x = "Year", y = "", title = "Eigencentrality and proportion of participants by discipline ") +
+           theme_bw()
+         )
+}
+
 all.ec <- get_all_eigencent(processed)
+prop.discp <- get_prop_people_by_year(processed) %>%
+  mutate(discp = discp1, year = Year)
+#joined <- merge(all.ec, prop.discp, by = c("year", "discp"))
+
 ggsave("figures/eigencentrality.png", plot_eigen_lines(all.ec), 
        width = 5, height = 2.5, scale = 1.75)
+ggsave("figures/eigen_prop-of-people.png", plot_eigen_and_prop(all.ec, prop.discp), 
+       width = 6.5, height = 4, scale = 1.75)
 
+#not used in 
+plot(plot_avg_eigen(all.ec))
 
