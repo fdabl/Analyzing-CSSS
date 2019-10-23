@@ -68,14 +68,14 @@ plot_eigen_lines <- function(df) {
            scale_color_discrete(name = "Discipline") +
            labs(x = "Year", y = "Eigencentrality", title = "Eigencentrality of disciplines") +
            theme_bw()
-         )
+  )
 }
 
 #get separate graph for proportion of participant lines
 plot_prop_lines <- function(df) {
   graph.df <- df %>%
     filter(discp1 %in% c("Computing", "Life sciences", "Physical sciences", "Social and behavioral sciences", 
-                        "Mathematics and statistics", "Engineering and engineering trades"))
+                         "Mathematics and statistics", "Engineering and engineering trades"))
   return(ggplot(data = graph.df) +
            geom_line(aes(x = Year, y = prop, color = discp1, group = discp1)) +
            geom_point(aes(x = Year, y = prop, color = discp1, group = discp1), size = 3) +
@@ -90,7 +90,7 @@ plot_eigen_and_prop <- function(all.ec, prop.discp) {
     gather(type, value, mean.ec, prop) %>%
     select(year, discp, type, value) %>%
     filter(discp %in% c("Computing", "Life sciences", "Physical sciences", "Social and behavioral sciences", 
-                         "Mathematics and statistics", "Engineering and engineering trades"))
+                        "Mathematics and statistics", "Engineering and engineering trades"))
   
   labels <- c(mean.ec = "Eigencentrality", prop = "Proportion of participants")
   return(ggplot(graph.df, aes(x=year, y=value, color = discp, group = discp)) +
@@ -100,15 +100,9 @@ plot_eigen_and_prop <- function(all.ec, prop.discp) {
            scale_color_discrete(name = "Discipline") +
            labs(x = "Year", y = "", title = "Eigencentrality and proportion of participants by discipline ") +
            theme_bw()
-         )
+  )
 }
 
-<<<<<<< HEAD
-all.ec <- get_all_eigencent(processed)
-prop.discp <- get_prop_people_by_year(processed) %>%
-  mutate(discp = discp1, year = Year)
-#joined <- merge(all.ec, prop.discp, by = c("year", "discp"))
-=======
 plot_all_eigen <- function(df) {
   return(ggplot(df, aes(x=year, y=mean.ec, group=discp)) +
            geom_line() +
@@ -117,23 +111,19 @@ plot_all_eigen <- function(df) {
            theme_bw() +
            labs(x = "Year", y = "Eigencentrality", title = "Eigencentrality by discpline") +
            theme(axis.text.x = element_text(angle = 90))
-         )
+  )
 }
 
 all.ec <- get_all_eigencent(processed)
 prop.discp <- get_prop_people_by_year(processed) %>%
   mutate(discp = discp1, year = Year)
->>>>>>> master
 
 ggsave("figures/eigencentrality.png", plot_eigen_lines(all.ec), 
        width = 5, height = 2.5, scale = 1.75)
 ggsave("figures/eigen_prop-of-people.png", plot_eigen_and_prop(all.ec, prop.discp), 
        width = 6.5, height = 4, scale = 1.75)
-<<<<<<< HEAD
-=======
 ggsave("figures/all-discp_eigen-values.png", plot_all_eigen(all.ec), 
        width = 7, height = 5.5, scale = 1.25)
->>>>>>> master
 
 #not used in 
 plot(plot_avg_eigen(all.ec))
