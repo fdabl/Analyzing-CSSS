@@ -103,15 +103,37 @@ plot_eigen_and_prop <- function(all.ec, prop.discp) {
          )
 }
 
+<<<<<<< HEAD
 all.ec <- get_all_eigencent(processed)
 prop.discp <- get_prop_people_by_year(processed) %>%
   mutate(discp = discp1, year = Year)
 #joined <- merge(all.ec, prop.discp, by = c("year", "discp"))
+=======
+plot_all_eigen <- function(df) {
+  return(ggplot(df, aes(x=year, y=mean.ec, group=discp)) +
+           geom_line() +
+           geom_point(size = 2) +
+           facet_wrap(~ discp) + 
+           theme_bw() +
+           labs(x = "Year", y = "Eigencentrality", title = "Eigencentrality by discpline") +
+           theme(axis.text.x = element_text(angle = 90))
+         )
+}
+
+all.ec <- get_all_eigencent(processed)
+prop.discp <- get_prop_people_by_year(processed) %>%
+  mutate(discp = discp1, year = Year)
+>>>>>>> master
 
 ggsave("figures/eigencentrality.png", plot_eigen_lines(all.ec), 
        width = 5, height = 2.5, scale = 1.75)
 ggsave("figures/eigen_prop-of-people.png", plot_eigen_and_prop(all.ec, prop.discp), 
        width = 6.5, height = 4, scale = 1.75)
+<<<<<<< HEAD
+=======
+ggsave("figures/all-discp_eigen-values.png", plot_all_eigen(all.ec), 
+       width = 7, height = 5.5, scale = 1.25)
+>>>>>>> master
 
 #not used in 
 plot(plot_avg_eigen(all.ec))
