@@ -8,7 +8,8 @@ data <- data %>% filter(Year != 2011)
 clean_raw_data <- function(data) {
 isced.split <- data %>%
   mutate(Topic_isced = str_replace(Topic_isced, ",", ";")) %>%
-  separate(Topic_isced, c("topic1", "topic2"), sep = ";") %>%
+  separate(Topic_isced, c("topic1", "topic2"), sep = ";") %>% 
+  mutate(Discipline_isced = str_replace(Discipline_isced, ",", ";")) %>%
   separate(Discipline_isced, c("discp1", "discp2"), sep = ";") %>%
   filter(topic1 != "", discp1 != "") %>%
   mutate(topic2 = str_trim(topic2, side = "left"), 
