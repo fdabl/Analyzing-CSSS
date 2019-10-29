@@ -12,10 +12,11 @@ args <- commandArgs(trailingOnly=TRUE)
 path.to.file <- first(args)
 bootdata <- read.csv(path.to.file)
 
+print(levels(bootdata$attr))
 bootplot <- bootdata %>%
   filter(!iter %in% TO_FILTER) %>%
   mutate(
-    attr = factor(attr, labels = c("Discipline", "Gender", "Position", "Prestige"))
+    attr = factor(attr, labels = c("Country", "Discipline", "Gender", "Position", "Prestige"))
   ) %>%
   rowwise() %>%
   mutate(
