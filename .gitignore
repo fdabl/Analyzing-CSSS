@@ -1,3 +1,6 @@
+# Ignore data files
+data/Derived
+
 .DS_Store
 
 Rplots.pdf
@@ -9,7 +12,6 @@ PROJ_HOME_DIR
 .nb.html
 
 # Data
-*.csv
 
 # Figures
 figures/
