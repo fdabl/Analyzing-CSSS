@@ -53,18 +53,26 @@ plot_hhi_ps <- function(all.hmph) {
     filter(discp != "") %>%
     filter(!is.nan(hhi) | !is.nan(ps)) %>%
     mutate(hhi_norm = hhi/10000) %>%
-    gather(type, value, hhi_norm, ps) 
+    gather(type, value, hhi_norm, ps)
     
   labels <- c(hhi_norm = "HHI", ps = "Percent Similar")
-  return(ggplot(graph.df, aes(x=reorder(discp, hhi, FUN = median), y=value, fill=discp, group=discp)) +
-           geom_boxplot(outlier.shape = NA) +
+  dlevels <- graph.df %>% 
+    filter(type == "hhi_norm") %>%
+    group_by(discp) %>%
+    summarize(med.hhi = median(value, na.rm = T)) %>%
+    arrange(med.hhi) %>%
+    pull(discp)
+    
+  return(ggplot(graph.df, aes(x=discp, y=value, fill=discp, group=discp)) +
+           geom_boxplot(aes(middle = median(value)), outlier.shape = NA) +
            geom_jitter(color = "black", size = 0.6, alpha = 0.6) +
            theme_minimal() +
            facet_grid(type ~ ., switch = "both", labeller = labeller(type = labels), scales = "free_y") +
            guides(fill = F) +
            theme(axis.text.x = element_text(angle = 32, hjust = 1, size = 7), 
                  strip.placement = "outside") +
-           labs(x = "", y = "")
+           labs(x = "", y = "") +
+           scale_x_discrete(limits = dlevels)
     
   )
 }  
