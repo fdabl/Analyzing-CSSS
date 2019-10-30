@@ -67,7 +67,7 @@ plot_eigen_lines <- function(df) {
            geom_point(aes(x = year, y = mean.ec, color = discp, group = discp), size = 3) +
            scale_color_discrete(name = "Discipline") +
            labs(x = "Year", y = "Eigencentrality", title = "Eigencentrality of disciplines") +
-           theme_bw()
+           theme_minimal()
   )
 }
 
@@ -81,7 +81,7 @@ plot_prop_lines <- function(df) {
            geom_point(aes(x = Year, y = prop, color = discp1, group = discp1), size = 3) +
            scale_color_discrete(name = "Discipline") +
            labs(x = "Year", y = "Proportion of participants", title = "Proportion of participants by disciplines") +
-           theme_bw()
+           theme_minimal()
   )
 }
 
@@ -96,19 +96,22 @@ plot_eigen_and_prop <- function(all.ec, prop.discp) {
   return(ggplot(graph.df, aes(x=year, y=value, color = discp, group = discp)) +
            geom_line() +
            geom_point(size = 3) +
-           facet_grid(type ~ ., labeller = labeller(type = labels)) +
+           facet_grid(type ~ ., labeller = labeller(type = labels), switch = "both") +
            scale_color_discrete(name = "Discipline") +
            labs(x = "Year", y = "", title = "Eigencentrality and proportion of participants by discipline ") +
-           theme_bw()
+           theme_minimal() +
+           theme(strip.placement = "outside")
   )
 }
 
+#put facet labels on the other side
 plot_all_eigen <- function(df) {
+  df <- df %>% filter(discp != "")
   return(ggplot(df, aes(x=year, y=mean.ec, group=discp)) +
            geom_line() +
            geom_point(size = 2) +
            facet_wrap(~ discp) + 
-           theme_bw() +
+           theme_minimal() +
            labs(x = "Year", y = "Eigencentrality", title = "Eigencentrality by discpline") +
            theme(axis.text.x = element_text(angle = 90))
   )
@@ -123,5 +126,5 @@ ggsave("figures/eigencentrality.png", plot_eigen_lines(all.ec),
 ggsave("figures/eigen_prop-of-people.png", plot_eigen_and_prop(all.ec, prop.discp), 
        width = 6.5, height = 4, scale = 1.75)
 ggsave("figures/all-discp_eigen-values.png", plot_all_eigen(all.ec), 
-       width = 7, height = 5.5, scale = 1.25)
+       width = 8, height = 5.5, scale = 1.25)
 

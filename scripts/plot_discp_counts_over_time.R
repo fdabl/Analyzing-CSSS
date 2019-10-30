@@ -16,7 +16,8 @@ count_disciplines_per_group <- function(data) {
               #count2 = n_distinct(discp2),
               year = first(Year), 
               topic1 = first(topic1),
-              topic2 = first(topic2), 
+              topic2 = first(topic2),
+              size = first(Size),
               Location = first(Location), 
               Year = first(Year)) %>%
     unite(Iteration_display, Year, Location, sep = " ")
@@ -33,7 +34,7 @@ plot_discp_counts_per_year <- function(counts) {
            geom_boxplot(outlier.shape = NA) +
            geom_jitter(color = "black", size = 0.6, alpha = 0.6) +
            theme_bw() +
-           coord_flip() +
+           #coord_flip() +
            guides(fill = F, alpha = F) +
            labs(y = "Unique Disciplines", x = "", 
                 title = "Number of unique disciplines in a group")
@@ -42,15 +43,15 @@ plot_discp_counts_per_year <- function(counts) {
 
 plot_discp_counts_by_topic <- function(counts) {
   counts <- counts %>% filter(topic1 != "")
-  return(ggplot(data = counts, aes(x = reorder(topic1, count1, FUN=median), y = count1, group = topic1, fill = topic1)) +
+  counts$prop.same <- counts$count1/counts$size
+  return(ggplot(data = counts, aes(x = reorder(topic1, prop.same, FUN=median), y = prop.same, group = topic1, fill = topic1)) +
            geom_boxplot(outlier.shape = NA) +
            geom_jitter(color = "black", size = 0.6, alpha = 0.6) +
            theme_minimal() +
-           coord_flip() +
+           #coord_flip() +
            guides(fill = F, alpha = F) +
-           labs(y = "Unique Disciplines", x = "", 
-                title = "Number of average unique disciplines") #+
-           #scale_x_discrete(limits = sort(unique(counts$topic1))) +
+           labs(y = "Proportion of unique disciplines per group", x = "") +
+           theme(axis.text.x = element_text(angle = 32, hjust = 1))
 
          )
 }
@@ -59,7 +60,7 @@ counts <- count_disciplines_per_group(processed)
 # ggsave("figures/counts_per_year.png", plot_discp_counts_per_year(counts), 
 #        width = 3.35, height = 3.89, scale = 1.75)
 ggsave("figures/counts_by_topic.png", plot_discp_counts_by_topic(counts), 
-       width = 3.75, height = 3.89, scale = 1.75)
+       width = 5, height = 3, scale = 1.75)
 
 # t.test(counts$count1[counts$topic1 == "Agriculture and forestry and fishery"], 
 #        counts$count1[counts$topic1 == "Architecture and building"])
