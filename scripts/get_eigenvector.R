@@ -125,6 +125,3 @@ ggsave("figures/eigen_prop-of-people.png", plot_eigen_and_prop(all.ec, prop.disc
 ggsave("figures/all-discp_eigen-values.png", plot_all_eigen(all.ec), 
        width = 7, height = 5.5, scale = 1.25)
 
-#not used in 
-plot(plot_avg_eigen(all.ec))
-

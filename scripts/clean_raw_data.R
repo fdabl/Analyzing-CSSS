@@ -7,11 +7,12 @@ data <- data %>% filter(Year != 2011)
 
 clean_raw_data <- function(data) {
 isced.split <- data %>%
+  filter(Location == "Santa Fe") %>%
   mutate(Topic_isced = str_replace(Topic_isced, ",", ";")) %>%
   separate(Topic_isced, c("topic1", "topic2"), sep = ";") %>% 
   mutate(Discipline_isced = str_replace(Discipline_isced, ",", ";")) %>%
   separate(Discipline_isced, c("discp1", "discp2"), sep = ";") %>%
-  filter(topic1 != "", discp1 != "") %>%
+  #filter(topic1 != "", discp1 != "") %>%
   mutate(topic2 = str_trim(topic2, side = "left"), 
          discp2 = str_trim(discp2, side = "left")) %>%
   mutate(discp1 = ifelse(str_detect(discp1, "Social and"), 
@@ -33,7 +34,7 @@ isced.split <- data %>%
                                 "Social and behavioral sciences", 
                                 ifelse(str_detect(topic1, "duction"), 
                                        "Education", 
-                                       ifelse(str_detect(topic1, "Life science"), 
+                                       ifelse(str_detect(topic1, "Life "), 
                                               "Life sciences", topic1))))) %>%
   mutate(topic2 = ifelse(str_detect(topic2, "Social and"), 
                          "Social and behavioral sciences", 

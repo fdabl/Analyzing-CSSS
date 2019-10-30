@@ -8,11 +8,10 @@ source("scripts/clean_raw_data.R")
 data <- read.csv("data/raw/cleaned_csss-all.csv")
 data <- data %>% filter(Year != 2011)
 processed <- clean_raw_data(data)
-groups <- processed %>% group_indices(Title)
 
-count_disciplines_per_group <- function(data, groups) {
-  data$group.id <- groups
-  discp.count <- data %>% group_by(group.id) %>%
+count_disciplines_per_group <- function(data) {
+  data <- data %>% filter(discp1 != "")
+  discp.count <- data %>% group_by(Title) %>%
     summarize(count1 = n_distinct(discp1),
               #count2 = n_distinct(discp2),
               year = first(Year), 
@@ -42,6 +41,7 @@ plot_discp_counts_per_year <- function(counts) {
 }
 
 plot_discp_counts_by_topic <- function(counts) {
+  counts <- counts %>% filter(topic1 != "")
   return(ggplot(data = counts, aes(x = reorder(topic1, count1, FUN=median), y = count1, group = topic1, fill = topic1)) +
            geom_boxplot(outlier.shape = NA) +
            geom_jitter(color = "black", size = 0.6, alpha = 0.6) +
@@ -55,9 +55,11 @@ plot_discp_counts_by_topic <- function(counts) {
          )
 }
 
-counts <- count_disciplines_per_group(processed, groups)
+counts <- count_disciplines_per_group(processed)
 # ggsave("figures/counts_per_year.png", plot_discp_counts_per_year(counts), 
 #        width = 3.35, height = 3.89, scale = 1.75)
 ggsave("figures/counts_by_topic.png", plot_discp_counts_by_topic(counts), 
        width = 3.75, height = 3.89, scale = 1.75)
 
+# t.test(counts$count1[counts$topic1 == "Agriculture and forestry and fishery"], 
+#        counts$count1[counts$topic1 == "Architecture and building"])
