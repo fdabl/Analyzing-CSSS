@@ -14,13 +14,15 @@
 #' @param column the name of the column (as a string) to calculate homophily for
 #' @export
 get_hhi <- function(nodes, edges, column) {
-  results <- as.data.frame(unique(nodes$id))
-  results$value <- NULL
-  for(i in unique(nodes$id)) {
-    cur.edges <- edges[edges$from == i, ]
-    cur.edges <- cur.edges[-1]
-    colnames(cur.edges) <- c("from", "id", "rel","color", "dir")
-    cur.edges <- left_join(cur.edges, nodes, by = "id")
+  results <- as.data.frame(unique(nodes$node_id))
+  results$value <- NaN
+  for(i in unique(nodes$node_id)) {
+    cur.edges <- edges[edges$from == i | edges$to == i, ] %>%
+      gather(key, value, to, from) %>%
+      filter(value != i) %>%
+      select(value)
+    colnames(cur.edges) <- c("node_id")
+    cur.edges <- left_join(cur.edges, nodes, by = "node_id")
 
     if(!0 %in% dim(cur.edges) & !is.null(dim(cur.edges))) {
       tab <- as.data.frame(table(cur.edges[ ,column]))
@@ -31,7 +33,7 @@ get_hhi <- function(nodes, edges, column) {
 
       d <- shares[ , 'prop']
       hhi <- sum(d ^ 2)
-      results$value[i] <- hhi
+      results$value[results$`unique(nodes$node_id)` == i] <- hhi
     }
   }
   return(results)
@@ -51,19 +53,21 @@ get_hhi <- function(nodes, edges, column) {
 #' @param column the name of the column (as a string) to calculate homophily for
 #' @export
 get_ei <- function(nodes, edges, column) {
-  results <- as.data.frame(unique(nodes$id))
-  results$value <- 0
-  for(i in unique(nodes$id)) {
-    cur.edges <- edges[edges$from == i, ]
-    cur.edges <- cur.edges[-1]
-    colnames(cur.edges) <- c("from", "id", "rel","color", "dir")
-    cur.edges <- left_join(cur.edges, nodes, by = "id")
+  results <- as.data.frame(unique(nodes$node_id))
+  results$value <- NaN
+  for(i in unique(nodes$node_id)) {
+    cur.edges <- edges[edges$from == i | edges$to == i, ] %>%
+      gather(key, value, to, from) %>%
+      filter(value != i) %>%
+      select(value)
+    colnames(cur.edges) <- c("node_id")
+    cur.edges <- left_join(cur.edges, nodes, by = "node_id")
 
     if(!is.null(dim(cur.edges))) {
-      check <- as.character(nodes[nodes$id == i, column])
+      check <- as.character(nodes[nodes$node_id == i, column])
       num.same <- nrow(cur.edges[cur.edges[ ,column] == check, ])
       num.dif <- nrow(cur.edges[cur.edges[ ,column] != check, ])
-      results$value[i] <- as.numeric((num.same - num.dif)/nrow(cur.edges))
+      results$value[results$`unique(nodes$node_id)` == i] <- as.numeric((num.same - num.dif)/nrow(cur.edges))
     }
   }
   return(results)
@@ -82,18 +86,20 @@ get_ei <- function(nodes, edges, column) {
 #' @param column the name of the column (as a string) to calculate homophily for
 #' @export
 get_perc_sim <- function(nodes, edges, column) {
-  results <- as.data.frame(unique(nodes$id))
-  results$value <- 0
-  for(i in unique(nodes$id)) {
-    cur.edges <- edges[edges$from == i, ]
-    cur.edges <- cur.edges[-1]
-    colnames(cur.edges) <- c("from", "id", "rel","color", "dir")
-    cur.edges <- left_join(cur.edges, nodes, by = "id")
+  results <- as.data.frame(unique(nodes$node_id))
+  results$value <- NaN
+  for(i in unique(nodes$node_id)) {
+    cur.edges <- edges[edges$from == i | edges$to == i, ] %>%
+      gather(key, value, to, from) %>%
+      filter(value != i) %>%
+      select(value)
+    colnames(cur.edges) <- c("node_id")
+    cur.edges <- left_join(cur.edges, nodes, by = "node_id")
 
     if(!is.null(dim(cur.edges))) {
-      check <- as.character(nodes[nodes$id == i, column])
+      check <- as.character(nodes[nodes$node_id == i, column])
       num.same <- nrow(cur.edges[cur.edges[ ,column] == check, ])
-      results$value[i] <- num.same / nrow(cur.edges)
+      results$value[results$`unique(nodes$node_id)` == i] <- num.same / nrow(cur.edges)
     }
   }
   return(results)
