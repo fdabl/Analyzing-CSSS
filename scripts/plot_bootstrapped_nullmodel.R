@@ -16,7 +16,9 @@ print(levels(bootdata$attr))
 bootplot <- bootdata %>%
   filter(!iter %in% TO_FILTER) %>%
   mutate(
-    attr = factor(attr, labels = c("Country", "Discipline", "Gender", "Position", "Prestige"))
+    attr = factor(attr,
+                  levels = c("gender", "pos.var", "prstg", "cntry", "discp"),
+                  labels = c("Gender", "Position", "Prestige", "Country", "Discipline"))
   ) %>%
   rowwise() %>%
   mutate(
