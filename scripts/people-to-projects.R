@@ -42,12 +42,13 @@ glevels <- compare %>%
 #   scale_x_discrete(limits = glevels)
 
 prop.plot <- ggplot(compare, aes(x = peop.prop, y = proj.prop, color = discp)) +
-  geom_point() +
+  geom_point(size = 3) +
   geom_abline() +
-  geom_text(aes(label = ifelse(abs(dif) > 0.02, discp, ""), vjust = 1, hjust = 1), size = 3) +
+  ggrepel::geom_text_repel(aes(label = ifelse(abs(dif) > 0.02, discp, "")), size = 3) +
   theme_minimal() +
-  guides(color = F) +
-  labs(x = "Proportion of total participants", y = "Proportion of total projects")
+  labs(color = "Discipline") +
+  labs(x = "Proportion of total participants", y = "Proportion of total projects") +
+  xlim(0.0, 0.375) + ylim(0.0, 0.375)
 
 ggsave("figures/prop-people-projects.png", prop.plot, 
-       width = 6, height = 5.5)
+       width = 8, height = 5.5)

@@ -97,7 +97,7 @@ plot_eigen_and_prop <- function(all.ec, prop.discp) {
            geom_line() +
            geom_point(size = 3) +
            facet_grid(type ~ ., labeller = labeller(type = labels), switch = "both") +
-           scale_color_discrete(name = "Discipline") +
+           scale_color_brewer(name = "Discipline", palette = "Dark2") +
            labs(x = "Year", y = "", title = "Eigencentrality and proportion of participants by discipline ") +
            theme_minimal() +
            theme(strip.placement = "outside")
