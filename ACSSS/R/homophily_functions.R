@@ -13,12 +13,14 @@
 #' @param edges the dataframe contianing the network edges
 #' @param column the name of the column (as a string) to calculate homophily for
 #' @export
+#' @import dplyr
+
 get_hhi <- function(nodes, edges, column) {
   results <- as.data.frame(unique(nodes$node_id))
   results$value <- NaN
   for(i in unique(nodes$node_id)) {
     cur.edges <- edges[edges$from == i | edges$to == i, ] %>%
-      gather(key, value, to, from) %>%
+      tidyr::gather(key, value, to, from) %>%
       filter(value != i) %>%
       select(value)
     colnames(cur.edges) <- c("node_id")
@@ -57,7 +59,7 @@ get_ei <- function(nodes, edges, column) {
   results$value <- NaN
   for(i in unique(nodes$node_id)) {
     cur.edges <- edges[edges$from == i | edges$to == i, ] %>%
-      gather(key, value, to, from) %>%
+      tidyr::gather(key, value, to, from) %>%
       filter(value != i) %>%
       select(value)
     colnames(cur.edges) <- c("node_id")
@@ -90,7 +92,7 @@ get_perc_sim <- function(nodes, edges, column) {
   results$value <- NaN
   for(i in unique(nodes$node_id)) {
     cur.edges <- edges[edges$from == i | edges$to == i, ] %>%
-      gather(key, value, to, from) %>%
+      tidyr::gather(key, value, to, from) %>%
       filter(value != i) %>%
       select(value)
     colnames(cur.edges) <- c("node_id")
