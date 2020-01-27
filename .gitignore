@@ -1,6 +1,9 @@
 # Ignore data files
 data/Derived
 
+data/raw/cleaned_csss-all.csv
+data/raw/csss-*.csv
+
 .DS_Store
 
 Rplots.pdf
