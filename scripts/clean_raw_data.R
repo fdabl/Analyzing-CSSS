@@ -32,7 +32,7 @@ isced.split <- data %>%
   mutate(topic1 = ifelse(str_detect(topic1, "Environmental "), 
                          "Environmental protection", 
                          ifelse(str_detect(topic1, "Social and"), 
-                                "Social and behavioral sciences", 
+                                "Social and behavioral sciences",
                                 ifelse(str_detect(topic1, "Education"), 
                                        "Teacher training and education science", 
                                        ifelse(str_detect(topic1, "Life "), 

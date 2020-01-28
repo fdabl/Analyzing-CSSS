@@ -64,5 +64,6 @@ counts <- count_disciplines_per_group(processed)
 ggsave("figures/counts_by_topic.png", plot_discp_counts_by_topic(counts), 
        width = 5, height = 3, scale = 1.75, dpi = "print")
 
+
 # t.test(counts$count1[counts$topic1 == "Agriculture and forestry and fishery"], 
 #        counts$count1[counts$topic1 == "Architecture and building"])

@@ -10,7 +10,6 @@ source("ACSSS/R/build_node_dataframe.R")
 source("scripts/clean_raw_data.R")
 source("ACSSS/R/homophily_functions.R")
 
-
 data <- read.csv("data/raw/cleaned_csss-all.csv")
 data <- data %>% filter(Year != 2011)
 processed <- clean_raw_data(data)
