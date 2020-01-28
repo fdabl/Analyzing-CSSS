@@ -10,6 +10,7 @@ source("ACSSS/R/build_node_dataframe.R")
 source("scripts/clean_raw_data.R")
 source("ACSSS/R/homophily_functions.R")
 
+
 data <- read.csv("data/raw/cleaned_csss-all.csv")
 data <- data %>% filter(Year != 2011)
 processed <- clean_raw_data(data)
@@ -66,8 +67,8 @@ plot_hhi_ps <- function(all.hmph) {
   return(ggplot(graph.df, aes(x=discp, y=value, fill=discp, group=discp)) +
            geom_boxplot(aes(middle = median(value)), outlier.shape = NA) +
            geom_jitter(color = "black", size = 0.6, alpha = 0.6) +
-           theme_minimal() +
-           facet_grid(type ~ ., switch = "both", labeller = labeller(type = labels), scales = "free_y") +
+           theme_bw() +
+           facet_grid(type ~ ., switch = "both", labeller = labeller(type = labels)) +
            guides(fill = F) +
            theme(axis.text.x = element_text(angle = 32, hjust = 1, size = 7), 
                  strip.placement = "outside") +

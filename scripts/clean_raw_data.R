@@ -1,5 +1,6 @@
 library(dplyr)
 library(stringr)
+library(tidyr)
 
 data <- read.csv("data/raw/cleaned_csss-all.csv")
 data <- data %>% filter(Year != 2011)
@@ -32,10 +33,12 @@ isced.split <- data %>%
                          "Environmental protection", 
                          ifelse(str_detect(topic1, "Social and"), 
                                 "Social and behavioral sciences", 
-                                ifelse(str_detect(topic1, "duction"), 
-                                       "Education", 
+                                ifelse(str_detect(topic1, "Education"), 
+                                       "Teacher training and education science", 
                                        ifelse(str_detect(topic1, "Life "), 
-                                              "Life sciences", topic1))))) %>%
+                                              "Life sciences", 
+                                              ifelse(str_detect(topic1, "Medicine"), 
+                                                     "Health", topic1)))))) %>%
   mutate(topic2 = ifelse(str_detect(topic2, "Social and"), 
                          "Social and behavioral sciences", 
                          ifelse(str_detect(topic2, "Life "), 
