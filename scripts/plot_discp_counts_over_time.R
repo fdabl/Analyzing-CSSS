@@ -13,7 +13,7 @@ count_disciplines_per_group <- function(data) {
   data <- data %>% filter(discp1 != "")
   discp.count <- data %>% group_by(Title) %>%
     summarize(count1 = n_distinct(discp1),
-              count.p = n_distinct(Name),
+              #count.p = n_distinct(Name),
               year = first(Year), 
               topic1 = first(topic1),
               topic2 = first(topic2),
@@ -42,8 +42,8 @@ plot_discp_counts_per_year <- function(counts) {
 }
 
 plot_discp_counts_by_topic <- function(counts) {
-  counts <- counts %>% filter(topic1 != "")
-  counts[counts$count1 == 1 & counts$count.p != 1,]$count1 = 0
+  counts <- counts %>% filter(topic1 != "" & size != 1)
+  counts[counts$count1 == 1, ]$count1 = 0
   counts$prop.dif <- counts$count1/counts$size
   return(ggplot(data = counts, aes(x = reorder(topic1, prop.dif, FUN=median), y = prop.dif, group = topic1, fill = topic1)) +
            geom_boxplot(outlier.shape = NA) +
@@ -51,14 +51,15 @@ plot_discp_counts_by_topic <- function(counts) {
            theme_minimal() +
            #coord_flip() +
            guides(fill = F, alpha = F) +
-           labs(y = "Proportion of unique disciplines per group", x = "") +
-           theme(axis.text.x = element_text(angle = 32, hjust = 1))
-
+           labs(y = "\n\n\nProportion of unique disciplines per group", x = "") +
+           theme(axis.text.x = element_text(angle = 32, hjust = 1, size = 7), 
+                 #plot.margin = margin(2,2,2,2, "cm")
+                 )
          )
 }
 
 counts <- count_disciplines_per_group(processed)
-#plot_discp_counts_by_topic(counts)
+plot_discp_counts_by_topic(counts)
 # ggsave("figures/counts_per_year.png", plot_discp_counts_per_year(counts), 
 #        width = 3.35, height = 3.89, scale = 1.75)
 ggsave("figures/counts_by_topic.png", plot_discp_counts_by_topic(counts), 
