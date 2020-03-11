@@ -427,7 +427,6 @@ node_measures <- function(graph) {
   results$gen_hmph <- NULL
   results$prstg_hmph <- NULL
   
-  #attempting to get homophily measures --need to add gender homophily, and prestige homophily
   edges <- get_edge_df(graph)
   
   results$discp_hmph <- get.hhi(nodes, edges, "discp")$hhi

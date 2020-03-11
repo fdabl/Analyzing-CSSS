@@ -56,7 +56,7 @@ get.hhi <- function(nodes, edges, column) {
 
 
 ### Krackhardt and Stern E-I Index
-Relative density of within-group connections compare to number of extra-group connections
+Relative density of within-group connections compared to number of extra-group connections
 
 ##### Range
 + -1 is completely homophilious
