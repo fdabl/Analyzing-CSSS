@@ -15,7 +15,8 @@ isced.split <- data %>%
   separate(Discipline_isced, c("discp1", "discp2"), sep = ";") %>%
   #filter(topic1 != "", discp1 != "") %>%
   mutate(topic2 = str_trim(topic2, side = "left"), 
-         discp2 = str_trim(discp2, side = "left")) %>%
+         discp2 = str_trim(discp2, side = "left"), 
+         Position = str_trim(Position, side = "both")) %>%
   mutate(discp1 = ifelse(str_detect(discp1, "Social and"), 
                          "Social and behavioral sciences", 
                          ifelse(str_detect(discp1, "Physical"), 
@@ -44,6 +45,12 @@ isced.split <- data %>%
                          ifelse(str_detect(topic2, "Life "), 
                                 "Life sciences", 
                                 ifelse(str_detect(topic2, "Physical "), 
-                                       "Physical sciences", topic2))))
+                                       "Physical sciences", topic2)))) %>%
+  mutate(Position = ifelse(str_detect(Position, "stu"), 
+                           "Student", 
+                           ifelse(str_detect(Position, "Post"), 
+                                  "Postdoc",
+                                  ifelse(str_detect(Position, "PhD"), 
+                                         "Student", Position))))
   return(isced.split)
 }

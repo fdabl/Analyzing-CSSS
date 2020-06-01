@@ -1,6 +1,4 @@
 #get eigenvector centrality
-
-##preliminary playing around with data -- need to refamiliarize with DiagrammeR
 source("ACSSS/R/build_edge_dataframe.R")
 source("ACSSS/R/build_node_dataframe.R")
 source("scripts/clean_raw_data.R")
@@ -17,6 +15,7 @@ processed <- processed %>%
   mutate(Topic_isced = topic1, 
          Discipline_isced = discp1)
 
+####Create Eigencentrality Dataframes####
 get_eigen_by_year <- function(df, iter) {
   edges <- build_edge_dataframe(df, iter)
   nodes <- build_node_dataframe(df, iter)
@@ -49,15 +48,49 @@ get_all_eigencent <- function(df) {
   for(i in 2:length(iters)) {
     all.ec <- rbind(all.ec, get_eigen_by_year(df, iters[i]))
   }
+  
   all.ec <- all.ec %>%
     mutate(iteration = str_replace(iteration, "[.]", ",")) %>%
     separate(iteration, c("year", "location"), sep = ",") %>%
     filter(location == "Santa Fe", year != "2005")
+  
   return(all.ec)
 }
-all.ec <- get_all_eigencent(processed)
 
-#get separate graph for eigencentrality scores
+get_eigen_by_node = function(df) {
+  iters <- unique(df$Iteration)
+  edges <- build_edge_dataframe(df, iters[1])
+  nodes <- build_node_dataframe(df, iters[1])
+  graph <- create_graph(nodes, edges)
+  ec.nodes <- nodes %>%
+    left_join(get_eigen_centrality(graph), by = "id")
+  
+  for(i in 2:length(iters)) {
+    edges <- build_edge_dataframe(df, iters[i])
+    nodes <- build_node_dataframe(df, iters[i])
+    graph <- create_graph(nodes, edges)
+    nodes <- nodes %>%
+      left_join(get_eigen_centrality(graph), by = "id")
+    ec.nodes = rbind(ec.nodes, nodes)
+    
+  }
+  return(ec.nodes)
+}
+
+node.ec <- get_eigen_by_node(processed)
+hist(node.ec$eigen_centrality)
+
+fit1 = lm(eigen_centrality ~ as.factor(discp) + as.factor(pos.var) + as.factor(prstg) + as.factor(gender),
+          data = node.ec, na.action = na.omit)
+plot(fit1, which = 2)
+plot(fit1, which = 1)
+summary(fit1)
+#OLS is not best because distribution of eigencentrality values is not normal - need to figure out a better regression method
+
+# fitgamma = glm(eigen_centrality ~ as.factor(discp) + as.factor(pos.var) + as.factor(prstg) + as.factor(gender), 
+#                data = node.ec, na.action = na.omit, family = Gamma(link = "identity"))
+
+####Plotting Functions####
 plot_eigen_lines <- function(df) {
   graph.df <- df %>%
     filter(discp %in% c("Computing", "Life sciences", "Physical sciences", "Social and behavioral sciences", 
@@ -98,9 +131,9 @@ plot_eigen_and_prop <- function(all.ec, prop.discp) {
            geom_point(size = 3) +
            facet_grid(type ~ ., labeller = labeller(type = labels), switch = "both") +
            scale_color_brewer(name = "Discipline", palette = "Dark2") +
-           labs(x = "Year", y = "", title = "Eigencentrality and proportion of participants by discipline ") +
+           labs(x = "Year", y = "") +
            theme_minimal() +
-           theme(strip.placement = "outside")
+           theme(strip.placement = "outside", panel.spacing = unit(2, "lines"))
   )
 }
 
@@ -112,8 +145,8 @@ plot_all_eigen <- function(df) {
            geom_point(size = 2) +
            facet_wrap(~ discp) + 
            theme_minimal() +
-           labs(x = "Year", y = "Eigencentrality", title = "Eigencentrality by discpline") +
-           theme(axis.text.x = element_text(angle = 90))
+           labs(x = "Year", y = "Eigencentrality") +
+           theme(axis.text.x = element_text(angle = 90), panel.spacing = unit(2, "lines"))
   )
 }
 
