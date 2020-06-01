@@ -1,5 +1,4 @@
 ###preferential attachment regressions
-##need to do updates so that more than just binaries for discipline
 
 library(dplyr)
 library(ggplot2)
@@ -12,15 +11,20 @@ source("scripts/clean_raw_data.R")
 source("ACSSS/R/build_edge_dataframe.R")
 source("ACSSS/R/build_node_dataframe.R")
 
-processed <- process_acsss_data(data)
-graph = create_graph(nodes_df = build_node_dataframe(processed, "2019.SantaFe"),
-                     edges_df = build_edge_dataframe(processed, "2019.SantaFe"))
+data <- read.csv("data/raw/cleaned_csss-all.csv")
+data <- data %>% filter(Year != 2011)
+processed <- clean_raw_data(data)
+processed <- processed %>% 
+  mutate(Iteration = str_c(Year, Location, sep = ".")) %>%
+  mutate(Topic_isced = topic1, 
+         Discipline_isced = discp1)
 
-edges = build_edge_dataframe(processed, "2019.SantaFe")
-nodes = build_node_dataframe(processed, "2019.SantaFe")[,c(1,7,9:12)]
+edges = build_edge_dataframe(processed, "2019.Santa Fe")
+nodes = build_node_dataframe(processed, "2019.Santa Fe")[,c(1,7,9:12)]
 nodes$gender = as.character(nodes$gender)
+nodes$prstg = as.character(nodes$prstg)
 nodes = as_tibble(nodes)
-print(nodes)
+#print(nodes)
 
 net = network(as.matrix(edges[,2:3]), vertex.attr = nodes, vertex.attrnames = c(colnames(nodes)), 
                directed = F, matrix.type = "edgelist")
