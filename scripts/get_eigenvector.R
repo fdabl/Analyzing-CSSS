@@ -2,10 +2,12 @@
 source("ACSSS/R/build_edge_dataframe.R")
 source("ACSSS/R/build_node_dataframe.R")
 source("scripts/clean_raw_data.R")
-library(dplyr)
 library(tidyr)
 library(DiagrammeR)
 library(ggplot2)
+library(lme4)
+library(MASS)
+library(dplyr)
 
 data <- read.csv("data/raw/cleaned_csss-all.csv")
 data <- data %>% filter(Year != 2011)
@@ -13,7 +15,8 @@ processed <- clean_raw_data(data)
 processed <- processed %>% 
   mutate(Iteration = str_c(Year, Location, sep = ".")) %>%
   mutate(Topic_isced = topic1, 
-         Discipline_isced = discp1)
+         Discipline_isced = discp1) %>%
+  filter(Location == "Santa Fe")
 
 ####Create Eigencentrality Dataframes####
 get_eigen_by_year <- function(df, iter) {
@@ -79,6 +82,8 @@ get_eigen_by_node = function(df) {
 
 node.ec <- get_eigen_by_node(processed)
 hist(node.ec$eigen_centrality)
+node.ec2 = node.ec %>% filter(eigen_centrality != 0)
+hist(node.ec2$eigen_centrality)
 
 fit1 = lm(eigen_centrality ~ as.factor(discp) + as.factor(pos.var) + as.factor(prstg) + as.factor(gender),
           data = node.ec, na.action = na.omit)
@@ -87,8 +92,22 @@ plot(fit1, which = 1)
 summary(fit1)
 #OLS is not best because distribution of eigencentrality values is not normal - need to figure out a better regression method
 
-# fitgamma = glm(eigen_centrality ~ as.factor(discp) + as.factor(pos.var) + as.factor(prstg) + as.factor(gender), 
-#                data = node.ec, na.action = na.omit, family = Gamma(link = "identity"))
+##Box-Cox power transformation
+bc = boxcox(eigen_centrality ~ as.factor(discp) + as.factor(pos.var) + as.factor(prstg) + as.factor(gender),
+            data = node.ec2, na.action = na.omit)
+lambda = bc$x[which.max(bc$y)]
+
+node.ec2$ec.transformed = (((node.ec2$eigen_centrality)^lambda)-1)/lambda
+hist(node.ec2$ec.transformed)
+node.ec2[node.ec2 == ""] = NA
+
+fit2 = lm(ec.transformed ~ as.factor(discp) + as.factor(pos.var) + as.factor(prstg) + as.factor(gender),
+          data = node.ec2, na.action = na.omit)
+plot(fit2, which = 2)
+plot(fit2, which = 1)
+summary(fit2)
+levels(as.factor(node.ec2$pos.var))
+
 
 ####Plotting Functions####
 plot_eigen_lines <- function(df) {

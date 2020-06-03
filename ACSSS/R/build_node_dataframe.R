@@ -37,7 +37,7 @@ build_node_dataframe <- function(
   # Load dataframe for a particular year
   partic.df <- df %>%
     filter(Iteration == as.character(iter)) %>%
-    select(Name, Discipline_isced, Nationality, Gender, Position, Country_University, Prestige, Location) %>%
+    dplyr::select(Name, Discipline_isced, Nationality, Gender, Position, Country_University, Prestige, Location) %>%
     unique() %>%
     mutate(
       Name = as.factor(Name),
