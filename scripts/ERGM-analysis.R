@@ -5,6 +5,7 @@ library(tidyr)
 library(DiagrammeR)
 library(network)
 library(ergm)
+library(igraph)
 source("ACSSS/R/process_acsss_data.R")
 source("scripts/clean_raw_data.R")
 source("ACSSS/R/build_edge_dataframe.R")
@@ -20,8 +21,16 @@ processed <- processed %>%
          Discipline_isced = discp1) %>%
   left_join(binaries[])
 
-edges = build_edge_dataframe(processed, "2019.Santa Fe")
-nodes = build_node_dataframe(processed, "2019.Santa Fe")[,c(1,7,9:12)]
+iters = c(unique(processed$Iteration))
+
+edges = build_edge_dataframe(processed, iters[2])
+nodes = build_node_dataframe(processed, iters[2])[,c(1,7,9:12)]
+
+# for(i in 3:length(iters)) {
+#   edges = rbind(edges, build_edge_dataframe(processed, iters[i]))
+#   nodes = rbind(nodes, build_node_dataframe(processed, iters[i])[,c(1,7,9:12)])
+# }
+
 nodes$gender = as.character(nodes$gender)
 nodes$prstg = as.character(nodes$prstg)
 nodes = as_tibble(nodes)
@@ -69,3 +78,21 @@ discp3 = ergm(net ~ edges + nodemix("discp", levels = c("Life sciences", "Social
 summary(discp3)
 stargazer::stargazer(discp3, type = "text")
 
+
+####Dyad Counting####
+edges2 = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[2])[,2:3])))))
+nodes2 = build_node_dataframe(processed, iters[2])[,c(1,7,9:12)]
+e = edges2 %>% left_join(nodes2, by = c("V1" = "id")) %>% left_join(nodes2, by = c("V2" = "id"))
+
+for(i in 3:length(iters)) {
+  edges2 = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[i])[,2:3])))))
+  nodes2 = build_node_dataframe(processed, iters[i])[,c(1,7,9:12)]
+  e.add = edges2 %>% left_join(nodes2, by = c("V1" = "id")) %>% left_join(nodes2, by = c("V2" = "id"))
+  e = rbind(e, e.add)
+}
+
+dyad.discp = as.data.frame(table(e$discp.x, e$discp.y)) %>% filter(Var1 != "") %>% filter(Var2 != "")
+
+
+dyad.gender = as.data.frame(table(e$gender.x, e$gender.y)) %>% filter(Var1 != "") %>% filter(Var2 != "") %>% filter(Freq != 0)
+dyad.pos = as.data.frame(table(e$pos.var.x, e$pos.var.y)) %>% filter(Var1 != "") %>% filter(Var2 != "") %>% filter(Freq != 0)
