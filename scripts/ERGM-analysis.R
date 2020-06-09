@@ -91,8 +91,35 @@ for(i in 3:length(iters)) {
   e = rbind(e, e.add)
 }
 
+create_adj_matrix = function(df, varlist) {
+  occ = matrix(data = 0, nrow = length(varlist), ncol = length(varlist))
+  rownames(occ) = c(varlist)
+  colnames(occ) = c(varlist)
+  for(i in 1:nrow(occ)) {
+    for(j in 1:ncol(occ)) {
+      row = rownames(occ)[i]
+      col = rownames(occ)[j]
+      if(i != j) {
+        drows1 = df %>% filter(Var1 == row & Var2 == col)
+        drows2 = df %>% filter(Var2 == row & Var1 == col)
+        occ[i,j] = occ[i,j] + drows1$Freq[1] + drows2$Freq[1]
+      } else {
+        drows = df %>% filter(Var1 == row & Var2 == col)
+        occ[i,j] = occ[i,j] + drows$Freq[1]
+      }
+    }
+  }
+  return(occ)
+}
+
 dyad.discp = as.data.frame(table(e$discp.x, e$discp.y)) %>% filter(Var1 != "") %>% filter(Var2 != "")
+dlist = unique(c(unique(as.character(dyad.discp$Var1)), unique(as.character(dyad.discp$Var2))))
+discp.occ = create_adj_matrix(dyad.discp, dlist)
 
+dyad.gender = as.data.frame(table(e$gender.x, e$gender.y)) %>% filter(Var1 != "") %>% filter(Var2 != "")
+glist = unique(c(unique(as.character(dyad.gender$Var1)), unique(as.character(dyad.gender$Var2))))
+gender.occ = create_adj_matrix(dyad.gender, glist)
 
-dyad.gender = as.data.frame(table(e$gender.x, e$gender.y)) %>% filter(Var1 != "") %>% filter(Var2 != "") %>% filter(Freq != 0)
-dyad.pos = as.data.frame(table(e$pos.var.x, e$pos.var.y)) %>% filter(Var1 != "") %>% filter(Var2 != "") %>% filter(Freq != 0)
+dyad.pos = as.data.frame(table(e$pos.var.x, e$pos.var.y)) %>% filter(Var1 != "") %>% filter(Var2 != "")
+plist = unique(c(unique(as.character(dyad.pos$Var1)), unique(as.character(dyad.pos$Var2))))
+pos.occ = create_adj_matrix(dyad.pos, plist)
