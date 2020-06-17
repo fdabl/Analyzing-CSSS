@@ -6,6 +6,7 @@ library(DiagrammeR)
 library(network)
 library(ergm)
 library(igraph)
+library(ggthemes)
 source("ACSSS/R/process_acsss_data.R")
 source("scripts/clean_raw_data.R")
 source("ACSSS/R/build_edge_dataframe.R")
@@ -24,7 +25,7 @@ processed <- processed %>%
 iters = c(unique(processed$Iteration))
 
 edges = build_edge_dataframe(processed, iters[2])
-nodes = build_node_dataframe(processed, iters[2])[,c(1,6:7,9:12)])
+nodes = build_node_dataframe(processed, iters[2])[,c(1,6:7,9:12)]
 
 # for(i in 3:length(iters)) {
 #   edges = rbind(edges, build_edge_dataframe(processed, iters[i]))
@@ -85,8 +86,8 @@ for(i in 1:nrow(discp.occ)) {
   total = 0
   for(iter in iters[2:14]) {
     dc.year = discp.count %>% filter(year == iter)
-    n = ifelse(!is.null(dc.year$count[dc.year$discp == discp1]), as.numeric(dc.year$count[dc.year$discp == discp1]), 0)
-    m = ifelse(dc.year$count[dc.year$discp == discp2] != integer(0), as.numeric(dc.year$count[dc.year$discp == discp2]), 0)
+    n = ifelse(discp1 %in% dc.year$discp, as.numeric(dc.year$count[dc.year$discp == discp1]), 0)
+    m = ifelse(discp2 %in% dc.year$discp, as.numeric(dc.year$count[dc.year$discp == discp2]), 0)
     total = total + n*m
   }
   if(total == 0) {
@@ -95,6 +96,17 @@ for(i in 1:nrow(discp.occ)) {
   
 }
 
+discp.hm = ggplot(data = discp.occ, aes(x = X1, y = X2, size = freq, color = freq)) +
+  geom_point() +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 32, hjust = 1, size = 7),
+        axis.text.y = element_text(hjust = 1, size = 7), 
+        axis.title = element_blank()) +
+  labs(color = "Frequency") +
+  guides(size = F) +
+  scale_color_continuous_tableau()
+ggsave("figures/dyad-heatmap.png", discp.hm, units = "in", 
+       height = 5, width = 7, dpi = 300)
 
 
 # dyad.gender = as.data.frame(table(e$gender.x, e$gender.y)) %>% filter(Var1 != "") %>% filter(Var2 != "")
