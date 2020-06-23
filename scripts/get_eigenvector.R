@@ -242,7 +242,7 @@ generate_null_ec_data = function(processed, attr = "discp", n) {
 plot_ec_null_models = function(processed, attr = "discp") {
   all.ec = get_all_eigencent(processed, attr)
   all.ec[all.ec == ""] = NA
-  nulldf = generate_null_ec_data(processed, attr, 50) %>%
+  nulldf = generate_null_ec_data(processed, attr, 100) %>%
     mutate(iteration = str_replace(iteration, "[.]", ",")) %>%
     separate(iteration, c("year", "location"), sep = ",") %>%
     filter(location == "Santa Fe", year != "2005")
