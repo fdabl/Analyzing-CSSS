@@ -12,7 +12,7 @@ library(censReg)
 library(pscl)
 
 data <- read.csv("data/raw/cleaned_csss-all.csv")
-data <- data %>% filter(Year != 2011)
+#data <- data %>% filter(Year != 2011)
 processed <- clean_raw_data(data)
 processed <- processed %>% 
   mutate(Iteration = str_c(Year, Location, sep = ".")) %>%
@@ -40,7 +40,9 @@ get_eigen_by_year <- function(df, iter, attr = "discp") {
 }
 
 get_prop_people_by_year <- function(df) {
-  prop.df <- df %>% filter(Location == "Santa Fe", Year != "2005") %>%
+  prop.df <- df %>% filter(Location == "Santa Fe"
+                           #, Year != "2005"
+                           ) %>%
     group_by(Year, discp1) %>%
     summarize(n.ind = n_distinct(Name)) %>%
     group_by(Year) %>% 
@@ -58,7 +60,9 @@ get_all_eigencent <- function(df, attr = "discp") {
   all.ec <- all.ec %>%
     mutate(iteration = str_replace(iteration, "[.]", ",")) %>%
     separate(iteration, c("year", "location"), sep = ",") %>%
-    filter(location == "Santa Fe", year != "2005")
+    filter(location == "Santa Fe"
+           #, year != "2005"
+           )
   
   return(all.ec)
 }
@@ -83,41 +87,41 @@ get_eigen_by_node = function(df) {
   return(ec.nodes)
 }
 
-node.ec <- get_eigen_by_node(processed)
-hist(node.ec$eigen_centrality)
-node.ec$pos.var = factor(node.ec$pos.var, levels = c("Student", "Postdoc", "Professor", "Researcher", "Government", "Industry", "Medicine", "Other"))
-node.ec$prstg = factor(node.ec$prstg, levels = c("Top 50", "51-100", "101-150", "151-200", "201-300", "301-400", "401-500", "501-600", "Unlisted", "Not University"))
-node.ec$gender = factor(node.ec$gender, levels = c("Male", "Female"))
-#node.ec$discp = factor(node.ec2$discp, levels = c("Physical sciences"))
-node.ec[node.ec == ""] = NA
-node.ec2 = node.ec %>% filter(eigen_centrality != 0)
-hist(node.ec2$eigen_centrality)
-
-fit1 = glm(eigen_centrality ~ as.factor(discp) + as.factor(pos.var) + as.factor(prstg) + as.factor(gender),
-          data = node.ec, na.action = na.omit)
-plot(fit1, which = 2)
-plot(fit1, which = 1)
-summary(fit1)
-#OLS is not best because distribution of eigencentrality values is not normal - need to figure out a better regression method
-
-##Box-Cox power transformation
-bc = boxcox(eigen_centrality ~ as.factor(discp) + as.factor(pos.var) + as.factor(prstg) + as.factor(gender),
-            data = node.ec2, na.action = na.omit)
-lambda = bc$x[which.max(bc$y)]
-
-node.ec2$ec.transformed = (((node.ec2$eigen_centrality)^lambda)-1)/lambda
-hist(node.ec2$ec.transformed)
-node.ec2[node.ec2 == ""] = NA
-node.ec2$pos.var = factor(node.ec2$pos.var, levels = c("Student", "Postdoc", "Professor", "Researcher", "Government", "Industry", "Medicine", "Other"))
-node.ec2$prstg = factor(node.ec2$prstg, levels = c("Top 50", "51-100", "101-150", "151-200", "201-300", "301-400", "401-500", "501-600", "Unlisted", "Not University"))
-node.ec2$gender = factor(node.ec2$gender, levels = c("Male", "Female"))
-#node.ec2$discp = factor(node.ec2$discp, levels = c("Physical sciences"))
-
-fit2 = lm(ec.transformed ~ as.factor(discp) + as.factor(pos.var) + as.factor(prstg) + as.factor(gender),
-          data = node.ec2, na.action = na.omit)
-plot(fit2, which = 2)
-plot(fit2, which = 1)
-summary(fit2)
+# node.ec <- get_eigen_by_node(processed)
+# hist(node.ec$eigen_centrality)
+# node.ec$pos.var = factor(node.ec$pos.var, levels = c("Student", "Postdoc", "Professor", "Researcher", "Government", "Industry", "Medicine", "Other"))
+# node.ec$prstg = factor(node.ec$prstg, levels = c("Top 50", "51-100", "101-150", "151-200", "201-300", "301-400", "401-500", "501-600", "Unlisted", "Not University"))
+# node.ec$gender = factor(node.ec$gender, levels = c("Male", "Female"))
+# #node.ec$discp = factor(node.ec2$discp, levels = c("Physical sciences"))
+# node.ec[node.ec == ""] = NA
+# node.ec2 = node.ec %>% filter(eigen_centrality != 0)
+# hist(node.ec2$eigen_centrality)
+# 
+# fit1 = glm(eigen_centrality ~ as.factor(discp) + as.factor(pos.var) + as.factor(prstg) + as.factor(gender),
+#           data = node.ec, na.action = na.omit)
+# plot(fit1, which = 2)
+# plot(fit1, which = 1)
+# summary(fit1)
+# #OLS is not best because distribution of eigencentrality values is not normal - need to figure out a better regression method
+# 
+# ##Box-Cox power transformation
+# bc = boxcox(eigen_centrality ~ as.factor(discp) + as.factor(pos.var) + as.factor(prstg) + as.factor(gender),
+#             data = node.ec2, na.action = na.omit)
+# lambda = bc$x[which.max(bc$y)]
+# 
+# node.ec2$ec.transformed = (((node.ec2$eigen_centrality)^lambda)-1)/lambda
+# hist(node.ec2$ec.transformed)
+# node.ec2[node.ec2 == ""] = NA
+# node.ec2$pos.var = factor(node.ec2$pos.var, levels = c("Student", "Postdoc", "Professor", "Researcher", "Government", "Industry", "Medicine", "Other"))
+# node.ec2$prstg = factor(node.ec2$prstg, levels = c("Top 50", "51-100", "101-150", "151-200", "201-300", "301-400", "401-500", "501-600", "Unlisted", "Not University"))
+# node.ec2$gender = factor(node.ec2$gender, levels = c("Male", "Female"))
+# #node.ec2$discp = factor(node.ec2$discp, levels = c("Physical sciences"))
+# 
+# fit2 = lm(ec.transformed ~ as.factor(discp) + as.factor(pos.var) + as.factor(prstg) + as.factor(gender),
+#           data = node.ec2, na.action = na.omit)
+# plot(fit2, which = 2)
+# plot(fit2, which = 1)
+# summary(fit2)
 
 
 ####Plotting Functions####
@@ -280,4 +284,47 @@ prplot = plot_ec_null_models(processed, attr = "prstg")
 plot(prplot)
 ggsave("figures/eigencentrality_null_prestige.png", prplot,
        width = 6.5, height = 4, scale = 1.25)
+
+
+###Top 5 Discp Plot
+attr = "discp"
+all.ec = get_all_eigencent(processed, attr)
+all.ec[all.ec == ""] = NA
+nulldf = generate_null_ec_data(processed, attr, 100) %>%
+  mutate(iteration = str_replace(iteration, "[.]", ",")) %>%
+  separate(iteration, c("year", "location"), sep = ",") %>%
+  filter(location == "Santa Fe"
+         #, year != "2005"
+         )
+
+plotdf = nulldf %>% filter(discp %in% c("Social and behavioral sciences", 
+                                        "Engineering and engineering trades", 
+                                        "Physical sciences", 
+                                        "Life sciences", 
+                                        "Computing")) %>%
+  mutate(year = as.numeric(year))
+actual = all.ec %>% filter(discp %in% c("Social and behavioral sciences", 
+                                        "Engineering and engineering trades", 
+                                        "Physical sciences", 
+                                        "Life sciences", 
+                                        "Computing")) %>%
+  mutate(year = as.numeric(year))
+top = ggplot(data = plotdf, aes(x = year, y = mean.ec, group = year)) +
+  geom_boxplot(alpha = 0.6, color = "darkgrey", width = 0.5) +
+  geom_point(data = na.omit(actual), aes(y = mean.ec), color = "black", fill = "orange", size = 3, shape = 21) +
+  facet_wrap(~discp, ncol = 1) +
+  scale_x_continuous(breaks = c(2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019)) +
+  labs(x = "Year",
+       y = "Eigencentrality Value") +
+  theme_minimal() +
+  theme(
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 11),
+    strip.text = element_text(face = "bold", size = 12),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  )
+
+ggsave("figures/null-eigen_top5-discp.pdf", plot = top, height = 8, width = 5)
 
