@@ -311,7 +311,7 @@ actual = all.ec %>% filter(discp %in% c("Social and behavioral sciences",
   mutate(year = as.numeric(year))
 top = ggplot(data = plotdf, aes(x = year, y = mean.ec, group = year)) +
   geom_boxplot(alpha = 0.6, color = "darkgrey", width = 0.5) +
-  geom_point(data = na.omit(actual), aes(y = mean.ec), color = "black", fill = "orange", size = 3, shape = 21) +
+  geom_point(data = na.omit(actual), aes(y = mean.ec), color = "black", fill = "violet", size = 3, shape = 21) +
   facet_wrap(~discp, ncol = 1) +
   scale_x_continuous(breaks = c(2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019)) +
   labs(x = "Year",
