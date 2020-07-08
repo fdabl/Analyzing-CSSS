@@ -23,9 +23,10 @@ processed <- processed %>%
   left_join(binaries[])
 
 iters = c(unique(processed$Iteration))
+disciplines = c(unique(processed$discp1))[-1]
 
-edges = build_edge_dataframe(processed, iters[12])
-nodes = build_node_dataframe(processed, iters[12])[,c(1,6:7,9:12)]
+#edges = build_edge_dataframe(processed, iters[12])
+#nodes = build_node_dataframe(processed, iters[12])[,c(1,6:7,9:12)]
 
 # for(i in 3:length(iters)) {
 #   edges = rbind(edges, build_edge_dataframe(processed, iters[i]))
@@ -154,7 +155,47 @@ ggsave("figures/dyad-heatmap2.pdf", discp.hm2, units = "in",
 # }
 
 
+####Dyad Counting V2####
+dyad.discp = as.data.frame(table(e$discp.x, e$discp.y)) %>% filter(Var1 != "") %>% filter(Var2 != "")
+edge.count = dyad.discp %>% group_by(Var1) %>% summarize(edges = sum(Freq))
+dyad.discp$n.freq = 0
+for(i in 1:nrow(dyad.discp)) {
+  d = dyad.discp$Var1[i]
+  dyad.discp$n.freq[i] = dyad.discp$Freq[i]/(edge.count %>% filter(Var1 == d))$edges[1]
+}
+discp.count = n %>% group_by(discp) %>% summarize(count = n()) %>% filter(discp != "")
 
+dyad.discp$pcount = 0
+for(i in 1:nrow(dyad.discp)) {
+  d1 = as.character(dyad.discp$Var1[i])
+  dyad.discp$pcount[i] = (discp.count %>% filter(discp == d1))$count
+}
+dyad.discp$pprop = dyad.discp$pcount/sum(discp.count$count)
+
+
+discp.hm3 = ggplot(data = dyad.discp, aes(x = Var1, y = Var2, color = n.freq, size = pprop)) +
+  geom_point() +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 32, hjust = 1, size = 7),
+        axis.text.y = element_text(hjust = 1, size = 7), 
+        legend.title = element_text(size = 9), 
+        axis.title = element_text(size = 9)) +
+  labs(color = "Proportion of Connections", size = "Proportion of Participants", 
+       x = "Reference Discipline", y = "Connection Discipline") +
+  scale_color_gradientn(colors = wesanderson::wes_palette("Zissou1", 100, type = "continuous"))
+plot(discp.hm3)
+ggsave("figures/directed-pref-attach-heatmap.pdf", discp.hm3, units = "in", 
+       height = 5.5, width = 8.25, dpi = 300)
+
+discp.hm4 =  ggplot(data = dyad.discp, aes(x = Var1, y = Var2, fill = n.freq)) +
+  geom_tile() +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 32, hjust = 1, size = 7),
+        axis.text.y = element_text(hjust = 1, size = 7), 
+        axis.title = element_blank()) +
+  labs(fill = "Frequency of Dyad") +
+  scale_fill_gradientn(colors = wesanderson::wes_palette("Zissou1", 100, type = "continuous"))
+plot(discp.hm4)
 
 ####ERGM Analysis for nodematching####
 # net = network(as.matrix(edges[,2:3]), vertex.attr = nodes, vertex.attrnames = c(colnames(nodes)), 
