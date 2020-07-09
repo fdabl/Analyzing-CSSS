@@ -71,7 +71,7 @@ create_edgelist_count = function(df, varlist) {
     }
   }
   occ2 = occ
-  occ2[upper.tri(occ2)] = 0
+  #occ2[upper.tri(occ2)] = 0
   list = reshape::melt(occ2) %>% filter(value != 0)
   return(list)
 }
@@ -79,101 +79,21 @@ create_edgelist_count = function(df, varlist) {
 dyad.discp = as.data.frame(table(e$discp.x, e$discp.y)) %>% filter(Var1 != "") %>% filter(Var2 != "")
 dlist = unique(c(unique(as.character(dyad.discp$Var1)), unique(as.character(dyad.discp$Var2))))
 discp.occ = create_edgelist_count(dyad.discp, dlist)
-discp.count = n %>% group_by(discp, year) %>% summarize(count = n()) %>% filter(discp != "")
+discp.count = n %>% group_by(discp) %>% summarize(count = n()) %>% filter(discp != "")
 discp.occ$freq = 0
+edge.count = discp.occ %>% group_by(X1) %>% summarize(edges = sum(value))
 for(i in 1:nrow(discp.occ)) {
-  discp1 = as.character(discp.occ$X1[i])
-  discp2 = as.character(discp.occ$X2[i])
-  total = 0
-  for(iter in iters[2:14]) {
-    dc.year = discp.count %>% filter(year == iter)
-    n = ifelse(discp1 %in% dc.year$discp, as.numeric(dc.year$count[dc.year$discp == discp1]), 0)
-    m = ifelse(discp2 %in% dc.year$discp, as.numeric(dc.year$count[dc.year$discp == discp2]), 0)
-    total = total + n*m
-  }
-  if(total == 0) {
-    discp.occ$freq[i] = NA
-  }else { discp.occ$freq[i] = discp.occ$value[i]/total }
-  
+  d = discp.occ$X1[i]
+  discp.occ$freq[i] = discp.occ$value[i]/(edge.count %>% filter(X1 == d))$edges[1]
 }
-
-##need to add proportions of participants for each pair to discp.occ in order to plot
-dc = discp.count %>% group_by(discp) %>% summarize(count = sum(count))
 discp.occ$pcount = 0
 for(i in 1:nrow(discp.occ)) {
   d1 = as.character(discp.occ$X1[i])
-  d2 = as.character(discp.occ$X2[i])
-  discp.occ$pcount[i] = (dc %>% filter(discp == d1))$count + (dc %>% filter(discp == d2))$count
+  discp.occ$pcount[i] = (discp.count %>% filter(discp == d1))$count
 }
-discp.occ$pprop = discp.occ$pcount/sum(dc$count)
+discp.occ$pprop = discp.occ$pcount/sum(discp.count$count)
 
-discp.hm1 = ggplot(data = discp.occ, aes(x = X1, y = X2, size = pprop, color = freq)) +
-  geom_point() +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 32, hjust = 1, size = 7),
-        axis.text.y = element_text(hjust = 1, size = 7), 
-        axis.title = element_blank()) +
-  labs(color = "Frequency of Dyad", size = "Proportion of Participants") +
-  scale_color_gradientn(colors = wesanderson::wes_palette("Zissou1", 100, type = "continuous"))
-plot(discp.hm1)
-ggsave("figures/dyad-heatmap1.pdf", discp.hm1, units = "in", 
-       height = 5, width = 8, dpi = 300)
-
-discp.hm2 = ggplot(data = discp.occ, aes(x = X1, y = X2, size = freq, color = pprop)) +
-  geom_point() +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 32, hjust = 1, size = 7),
-        axis.text.y = element_text(hjust = 1, size = 7), 
-        axis.title = element_blank()) +
-  labs(color = "Proportion of Participants", size = "Frequency of Dyad") +
-  scale_color_continuous_tableau()
-ggsave("figures/dyad-heatmap2.pdf", discp.hm2, units = "in", 
-       height = 5, width = 8, dpi = 300)
-
-# dyad.gender = as.data.frame(table(e$gender.x, e$gender.y)) %>% filter(Var1 != "") %>% filter(Var2 != "")
-# glist = unique(c(unique(as.character(dyad.gender$Var1)), unique(as.character(dyad.gender$Var2))))
-# gender.occ = create_edgelist_count(dyad.gender, glist)
-# gen.count = n %>% group_by(gender) %>% summarize(count = n())
-# gender.occ$freq = 0
-# for(i in 1:nrow(gender.occ)) {
-#   gen1 = as.character(gender.occ$X1[i])
-#   gen2 = as.character(gender.occ$X2[i])
-#   total = gen.count$count[gen.count$gender == gen1] + gen.count$count[gen.count$gender == gen2]
-#   gender.occ$freq[i] = gender.occ$value[i]/total
-# }
-# 
-# dyad.pos = as.data.frame(table(e$pos.var.x, e$pos.var.y)) %>% filter(Var1 != "") %>% filter(Var2 != "")
-# plist = unique(c(unique(as.character(dyad.pos$Var1)), unique(as.character(dyad.pos$Var2))))
-# pos.occ = create_edgelist_count(dyad.pos, plist)
-# pos.count = n %>% group_by(pos.var) %>% summarize(count = n())
-# pos.occ$freq = 0
-# for(i in 1:nrow(pos.occ)) {
-#   pos1 = as.character(pos.occ$X1[i])
-#   pos2 = as.character(pos.occ$X2[i])
-#   total = pos.count$count[pos.count$pos.var == pos1] + pos.count$count[pos.count$pos.var == pos2]
-#   pos.occ$freq[i] = pos.occ$value[i]/total
-# }
-
-
-####Dyad Counting V2####
-dyad.discp = as.data.frame(table(e$discp.x, e$discp.y)) %>% filter(Var1 != "") %>% filter(Var2 != "")
-edge.count = dyad.discp %>% group_by(Var1) %>% summarize(edges = sum(Freq))
-dyad.discp$n.freq = 0
-for(i in 1:nrow(dyad.discp)) {
-  d = dyad.discp$Var1[i]
-  dyad.discp$n.freq[i] = dyad.discp$Freq[i]/(edge.count %>% filter(Var1 == d))$edges[1]
-}
-discp.count = n %>% group_by(discp) %>% summarize(count = n()) %>% filter(discp != "")
-
-dyad.discp$pcount = 0
-for(i in 1:nrow(dyad.discp)) {
-  d1 = as.character(dyad.discp$Var1[i])
-  dyad.discp$pcount[i] = (discp.count %>% filter(discp == d1))$count
-}
-dyad.discp$pprop = dyad.discp$pcount/sum(discp.count$count)
-
-
-discp.hm3 = ggplot(data = dyad.discp, aes(x = Var1, y = Var2, color = n.freq, size = pprop)) +
+discp.hm3 = ggplot(data = discp.occ, aes(x = X1, y = X2, color = freq, size = pprop)) +
   geom_point() +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 32, hjust = 1, size = 7),
@@ -187,15 +107,6 @@ plot(discp.hm3)
 ggsave("figures/directed-pref-attach-heatmap.pdf", discp.hm3, units = "in", 
        height = 5.5, width = 8.25, dpi = 300)
 
-discp.hm4 =  ggplot(data = dyad.discp, aes(x = Var1, y = Var2, fill = n.freq)) +
-  geom_tile() +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 32, hjust = 1, size = 7),
-        axis.text.y = element_text(hjust = 1, size = 7), 
-        axis.title = element_blank()) +
-  labs(fill = "Frequency of Dyad") +
-  scale_fill_gradientn(colors = wesanderson::wes_palette("Zissou1", 100, type = "continuous"))
-plot(discp.hm4)
 
 ####ERGM Analysis for nodematching####
 # net = network(as.matrix(edges[,2:3]), vertex.attr = nodes, vertex.attrnames = c(colnames(nodes)), 
