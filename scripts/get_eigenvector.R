@@ -5,11 +5,11 @@ source("scripts/clean_raw_data.R")
 library(tidyr)
 library(DiagrammeR)
 library(ggplot2)
-library(lme4)
-library(MASS)
+#library(lme4)
+#library(MASS)
 library(dplyr)
-library(censReg)
-library(pscl)
+#library(censReg)
+#library(pscl)
 
 data <- read.csv("data/raw/cleaned_csss-all.csv")
 #data <- data %>% filter(Year != 2011)
@@ -31,7 +31,7 @@ get_eigen_by_year <- function(df, iter, attr = "discp") {
   nodes <- nodes %>%
     left_join(get_eigen_centrality(graph), by = "id")
     #left_join(get_degree_total(graph), by = "id") %>%
-    mutate(deg_cen = total_degree/n)
+    #mutate(deg_cen = total_degree/n)
   ec <- nodes %>%  
     group_by_at(attr) %>%
     summarize(mean.ec = mean(eigen_centrality),
@@ -222,6 +222,21 @@ generate_null_ec_data = function(processed, attr = "discp", n) {
               min.ec = min(eigen_centrality)) %>%
     #arrange(attr) %>%
     mutate(iteration = iters[1])
+  for(i in 2:n) {
+    nodes = randomize_node_values(processed, iters[1], attr)
+    
+    graph = create_graph(nodes, edges)
+    nodes = nodes %>%
+      left_join(get_eigen_centrality(graph), by = "id")
+    ec1 = nodes %>%  
+      group_by_at(attr) %>%
+      summarize(mean.ec = mean(eigen_centrality), 
+                max.ec = max(eigen_centrality), 
+                min.ec = min(eigen_centrality)) %>%
+      #arrange(attr) %>%
+      mutate(iteration = iters[1])
+    ec = rbind(ec, ec1)
+  }
   
   for(i in 2:length(iters)) {
     print(i)
@@ -253,7 +268,7 @@ plot_ec_null_models = function(processed, attr = "discp") {
   nulldf = generate_null_ec_data(processed, attr, 100) %>%
     mutate(iteration = str_replace(iteration, "[.]", ",")) %>%
     separate(iteration, c("year", "location"), sep = ",") %>%
-    filter(location == "Santa Fe", year != "2005")
+    filter(location == "Santa Fe", year != "2005", year != "2011")
   grouping = c(attr, "year")
   ci = nulldf %>% group_by_at(grouping) %>%
     summarize(upper_ci = quantile(mean.ec, 0.975), 
@@ -299,6 +314,7 @@ nulldf = generate_null_ec_data(processed, attr, 100) %>%
   separate(iteration, c("year", "location"), sep = ",") %>%
   filter(location == "Santa Fe"
          #, year != "2005"
+         , year != "2011"
          )
 
 plotdf = nulldf %>% filter(discp %in% c("Social and behavioral sciences", 
@@ -312,7 +328,8 @@ actual = all.ec %>% filter(discp %in% c("Social and behavioral sciences",
                                         "Physical sciences", 
                                         "Life sciences", 
                                         "Computing")) %>%
-  mutate(year = as.numeric(year))
+  mutate(year = as.numeric(year)) %>%
+  filter(year != "2011")
 top = ggplot(data = plotdf, aes(x = year, y = mean.ec, group = year)) +
   geom_boxplot(alpha = 0.6, color = "darkgrey", width = 0.5) +
   geom_point(data = na.omit(actual), aes(y = mean.ec), color = "black", fill = "violet", size = 3, shape = 21) +
