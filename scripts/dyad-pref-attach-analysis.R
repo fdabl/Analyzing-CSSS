@@ -40,14 +40,14 @@ nodes = as_tibble(nodes)
 
 ####Dyad Counting####
 edges2 = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[2])[,2:3])))))
-nodes2 = build_node_dataframe(processed, iters[2])[,c(1,6:7,9:12)]
-e = edges2 %>% left_join(nodes2, by = c("V1" = "id")) %>% left_join(nodes2, by = c("V2" = "id"))
+nodes2 = build_node_dataframe(processed, iters[2])[,c(4,6:7,9:12)]
+e = edges2 %>% left_join(nodes2, by = c("V1" = "node_id")) %>% left_join(nodes2, by = c("V2" = "node_id"))
 n = nodes2
 
 for(i in 3:length(iters)) {
   edges2 = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[i])[,2:3])))))
-  nodes2 = build_node_dataframe(processed, iters[i])[,c(1,6:7,9:12)]
-  e.add = edges2 %>% left_join(nodes2, by = c("V1" = "id")) %>% left_join(nodes2, by = c("V2" = "id"))
+  nodes2 = build_node_dataframe(processed, iters[i])[,c(4,6:7,9:12)]
+  e.add = edges2 %>% left_join(nodes2, by = c("V1" = "node_id")) %>% left_join(nodes2, by = c("V2" = "node_id"))
   e = rbind(e, e.add)
   n = rbind(n, nodes2)
 }

@@ -25,15 +25,19 @@ processed <- processed %>%
 get_eigen_by_year <- function(df, iter, attr = "discp") {
   edges <- build_edge_dataframe(df, iter)
   nodes <- build_node_dataframe(df, iter)
+  n = nrow(nodes) -1
   
   graph <- create_graph(nodes, edges)
   nodes <- nodes %>%
     left_join(get_eigen_centrality(graph), by = "id")
+    #left_join(get_degree_total(graph), by = "id") %>%
+    mutate(deg_cen = total_degree/n)
   ec <- nodes %>%  
     group_by_at(attr) %>%
-    summarize(mean.ec = mean(eigen_centrality), 
-              max.ec = max(eigen_centrality), 
+    summarize(mean.ec = mean(eigen_centrality),
+              max.ec = max(eigen_centrality),
               min.ec = min(eigen_centrality)) %>%
+    #summarize(mean.ec = mean(deg_cen)) %>%
     #arrange(discp) %>%
     mutate(iteration = iter)
   return(ec)
