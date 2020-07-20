@@ -6,19 +6,23 @@ library(tidyr)
 library(DiagrammeR)
 library(ggplot2)
 library(dplyr)
+library(igraph)
 
 data <- read.csv("data/raw/cleaned_csss-all.csv")
-#data <- data %>% filter(Year != 2011)
+data <- data %>% filter(Year != 2011)
 processed <- clean_raw_data(data)
 processed <- processed %>% 
   mutate(Iteration = str_c(Year, Location, sep = ".")) %>%
   mutate(Topic_isced = topic1, 
          Discipline_isced = discp1) %>%
-  filter(Location == "Santa Fe") %>%
-  filter(Year != 2011)
+  filter(Location == "Santa Fe")
 
 iters = c(unique(processed$Iteration))
 disciplines = c(unique(processed$discp1))
+genders = c(unique(as.character(processed$Gender)))
+positions = c(unique(processed$Position))
+prestige = c(unique(as.character(processed$Prestige)))
+countries = c("USA", "Not USA")
 
 # #edges = build_edge_dataframe(processed, iters[15])
 # edges = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[15])[,2:3])))))
@@ -31,31 +35,34 @@ disciplines = c(unique(processed$discp1))
 # ingroup = nodes %>% filter(discp == disciplines[1])
 # gdcent = (nrow(ed1) + nrow(ed2))/(nrow(nodes) - nrow(ingroup))
 
-calculate_n.group.deg.cent = function(edges, nodes, d) {
+calculate_n.group.deg.cent = function(edges, nodes, d, attr = "discp") {
+  attr1 = paste0(attr, ".x")
+  attr2 = paste0(attr, ".y")
   edf = edges %>% left_join(nodes, by = c("V1" = "node_id")) %>% left_join(nodes, by = c("V2" = "node_id"))
-  ed1 = edf %>% filter(discp.x == d & discp.y != d) %>% dplyr::select(V1, V2, discp.x, discp.y)
-  ed2 = edf %>% filter(discp.y == d & discp.x != d) %>% dplyr::select(V1, V2, discp.x, discp.y)
-  ingroup = nodes %>% filter(discp == d)
-  return( (nrow(ed1) + nrow(ed2))/(nrow(nodes) - nrow(ingroup)) )
+  ed1 = edf %>% filter(eval(parse(text=attr1)) == d & eval(parse(text=attr2)) != d) #%>% dplyr::select(V1, V2, get(attr1), get(attr2))
+  ed2 = edf %>% filter(eval(parse(text=attr2)) == d & eval(parse(text=attr1)) != d) #%>% dplyr::select(V1, V2, discp.x, discp.y)
+  ingroup = nodes %>% filter(get(attr) == d)
+  alters = unique(c(unique(ed1$V2), unique(ed2$V1)))
+  return( (length(alters))/(nrow(nodes) - nrow(ingroup)) )
 }
 
-create_gdc_dataframe = function(nodes, edges, iter, disciplines) {
+create_gdc_dataframe = function(nodes, edges, iter, disciplines, attr = "discp") {
   ddf = data.frame(iter = iter, 
                    discp = disciplines, 
                    gdc = 0)
   for(i in 1:length(disciplines)) {
-    ddf$gdc[i] = calculate_n.group.deg.cent(edges, nodes, disciplines[i])
+    ddf$gdc[i] = calculate_n.group.deg.cent(edges, nodes, disciplines[i], attr = attr)
   }
   return(ddf)
 }
 
 edges = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[1])[,2:3])))))
 nodes = build_node_dataframe(processed, iters[1])
-all.gdc = create_gdc_dataframe(nodes, edges, iters[1], disciplines)
+all.gdc = create_gdc_dataframe(nodes, edges, iters[1], disciplines, attr = "discp")
 for(i in 2:length(iters)) {
   edges = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[i])[,2:3])))))
   nodes = build_node_dataframe(processed, iters[i])
-  all.gdc = rbind(all.gdc, create_gdc_dataframe(nodes, edges, iters[i], disciplines))
+  all.gdc = rbind(all.gdc, create_gdc_dataframe(nodes, edges, iters[i], disciplines, attr = "discp"))
 }
 
 randomize_node_values = function(processed, iter, attr = "discp"){
@@ -71,10 +78,10 @@ generate_null_data = function(n, processed, attr = "discp", iters, disciplines) 
   print(1)
   nodes = randomize_node_values(processed, iters[1], attr)
   edges = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[1])[,2:3])))))
-  null.gdc = create_gdc_dataframe(nodes, edges, iters[1], disciplines)
+  null.gdc = create_gdc_dataframe(nodes, edges, iters[1], disciplines, attr = attr)
   for(i in 2:n) {
     nodes = randomize_node_values(processed, iters[1], attr)
-    null.gdc = rbind(null.gdc, create_gdc_dataframe(nodes, edges, iters[1], disciplines))
+    null.gdc = rbind(null.gdc, create_gdc_dataframe(nodes, edges, iters[1], disciplines, attr = attr))
   }
   #run through all years of summer school
   for(i in 2:length(iters)) {
@@ -82,43 +89,128 @@ generate_null_data = function(n, processed, attr = "discp", iters, disciplines) 
     for(j in 1:n) {
       nodes = randomize_node_values(processed, iters[i], attr)
       edges = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[i])[,2:3])))))
-      null.gdc = rbind(null.gdc, create_gdc_dataframe(nodes, edges, iters[i], disciplines))
+      null.gdc = rbind(null.gdc, create_gdc_dataframe(nodes, edges, iters[i], disciplines, attr = attr))
     }
   }
   return(null.gdc)
 }
 
-null.gdc = generate_null_data(10, processed, attr = "discp", iters, disciplines)
+null.gdc = generate_null_data(100, processed, attr = "discp", iters, disciplines)
 
 actual = all.gdc %>% separate(iter, c("year", "location"), sep = "[.]") %>% filter(discp %in% c("Social and behavioral sciences", 
                                                                                                 "Engineering and engineering trades",
                                                                                                 "Physical sciences",
                                                                                                 "Life sciences",
-                                                                                                "Computing", 
-                                                                                                "Mathematics and statistics"))
+                                                                                                "Computing"#, 
+                                                                                                #"Mathematics and statistics"
+                                                                                                ))
 null = null.gdc %>% separate(iter, c("year", "location"), sep = "[.]") %>% filter(discp %in% c("Social and behavioral sciences", 
                                                                                                "Engineering and engineering trades",
                                                                                                "Physical sciences",
                                                                                                "Life sciences",
-                                                                                               "Computing", 
-                                                                                               "Mathematics and statistics"))
+                                                                                               "Computing"#, 
+                                                                                               #"Mathematics and statistics"
+                                                                                               ))
 
 p = ggplot(data = null, aes(x = year, y = gdc, group = year)) +
-  geom_boxplot(alpha = 0.6, color = "darkgrey", width = 0.8) +
-  geom_point(data = na.omit(actual), aes(y = gdc), color = "black", fill = "violet", size = 1, shape = 21) +
-  facet_wrap(~discp, ncol = 2) +
-  #scale_x_discrete(breaks = c(2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019)) +
+  geom_boxplot(alpha = 0.6, color = "darkgrey", width = 0.5) +
+  geom_point(data = na.omit(actual), aes(y = gdc), color = "black", fill = "violet", size = 2, shape = 21) +
+  facet_wrap(~discp, ncol = 1) +
+  scale_x_discrete(breaks = c(2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019)) +
   labs(x = "Year",
        y = "Normalized Group Degree Centrality") +
   theme_minimal() +
   theme(
-    axis.title = element_text(size = 10),
-    axis.text = element_text(size = 8, angle = 90),
-    strip.text = element_text(face = "bold", size = 8),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 11),
+    strip.text = element_text(face = "bold", size = 12),
     panel.grid.minor.y = element_blank(),
     panel.grid.major.x = element_blank(),
     panel.grid.minor.x = element_blank()
   )
 
-ggsave("figures/group-deg-cent_top6-discp.pdf", p, 
-       width = 8 , height = 7)
+ggsave("figures/group-deg-cent_top5-discp.pdf", p, 
+       width = 5, height = 8)
+
+plot_gdc_null = function(all.gdc, null.gdc, attr = "discp") {
+  p.ac = all.gdc %>% separate(iter, c("year", "location"), sep = "[.]") %>% filter(get(attr) != "")
+  p.null = null.gdc %>% separate(iter, c("year", "location"), sep = "[.]") %>% filter(get(attr) != "")
+  p1 = ggplot(data = p.null, aes(x = year, y = gdc, group = year)) +
+    geom_boxplot(alpha = 0.6, color = "darkgrey", width = 0.5) +
+    geom_point(data = na.omit(p.ac), aes(y = gdc), color = "black", fill = "violet", size = 1, shape = 21) +
+    facet_wrap(as.character(attr)) +
+    #scale_x_discrete(breaks = c(2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019)) +
+    labs(x = "Year",
+         y = "Normalized Group Degree Centrality") +
+    theme_minimal() +
+    theme(
+      #axis.title = element_text(size = 12),
+      axis.text = element_text(angle = 90),
+      #strip.text = element_text(face = "bold", size = 12),
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank()
+    )
+}
+
+dplot = plot_gdc_null(all.gdc, null.gdc, attr = "discp")
+plot(dplot)
+ggsave("figures/group-deg-cent_null_discp.png", dplot,
+       width = 8, height = 5.5, scale = 1.25)
+
+#gender
+edges = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[1])[,2:3])))))
+nodes = build_node_dataframe(processed, iters[1])
+gen.gdc = create_gdc_dataframe(nodes, edges, iters[1], genders, attr = "gender")
+for(i in 2:length(iters)) {
+  edges = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[i])[,2:3])))))
+  nodes = build_node_dataframe(processed, iters[i])
+  gen.gdc = rbind(gen.gdc, create_gdc_dataframe(nodes, edges, iters[i], genders, attr = "gender"))
+}
+null.gen.gdc = generate_null_data(100, processed, attr = "gender", iters, genders)
+gplot = plot_gdc_null(gen.gdc, null.gen.gdc, attr = "discp")
+ggsave("figures/group-deg-cent_null_gender.png", gplot, 
+       width = 5, height = 2.5, scale = 1.25)
+
+#position
+edges = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[1])[,2:3])))))
+nodes = build_node_dataframe(processed, iters[1])
+pos.gdc = create_gdc_dataframe(nodes, edges, iters[1], positions, attr = "pos.var")
+for(i in 2:length(iters)) {
+  edges = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[i])[,2:3])))))
+  nodes = build_node_dataframe(processed, iters[i])
+  pos.gdc = rbind(pos.gdc, create_gdc_dataframe(nodes, edges, iters[i], positions, attr = "pos.var"))
+}
+null.pos.gdc = generate_null_data(100, processed, attr = "pos.var", iters, positions)
+pplot = plot_gdc_null(pos.gdc, null.pos.gdc, attr = "discp")
+ggsave("figures/group-deg-cent_null_position.png", pplot,
+       width = 6.5, height = 4, scale = 1.25)
+
+#prestige
+edges = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[1])[,2:3])))))
+nodes = build_node_dataframe(processed, iters[1])
+pres.gdc = create_gdc_dataframe(nodes, edges, iters[1], prestige, attr = "prstg")
+for(i in 2:length(iters)) {
+  edges = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[i])[,2:3])))))
+  nodes = build_node_dataframe(processed, iters[i])
+  pres.gdc = rbind(pres.gdc, create_gdc_dataframe(nodes, edges, iters[i], prestige, attr = "prstg"))
+}
+null.pres.gdc = generate_null_data(100, processed, attr = "prstg", iters, prestige)
+prplot = plot_gdc_null(pres.gdc, null.pres.gdc, attr = "discp")
+ggsave("figures/group-deg-cent_null_prestige.png", prplot,
+       width = 6.5, height = 4, scale = 1.25)
+
+#country of study
+edges = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[1])[,2:3])))))
+nodes = build_node_dataframe(processed, iters[1])
+c.gdc = create_gdc_dataframe(nodes, edges, iters[1], countries, attr = "cntry")
+for(i in 2:length(iters)) {
+  edges = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[i])[,2:3])))))
+  nodes = build_node_dataframe(processed, iters[i])
+  c.gdc = rbind(c.gdc, create_gdc_dataframe(nodes, edges, iters[i], countries, attr = "cntry"))
+}
+null.c.gdc = generate_null_data(100, processed, attr = "cntry", iters, countries)
+cplot = plot_gdc_null(c.gdc, null.c.gdc, attr = "discp")
+ggsave("figures/group-deg-cent_null_cntry.png", cplot, 
+       width = 5, height = 2.5, scale = 1.25)
+

@@ -61,7 +61,7 @@ build_node_dataframe <- function(
     discp = partic.df$Discipline_isced,
     nat = partic.df$Nationality,
     pos.var = partic.df$Position,
-    cntry = ifelse(partic.df$Country_University == "USA", "USA", "Not USA"),
+    cntry = ifelse(partic.df$Country_University == "United States", "USA", "Not USA"),
     prstg = partic.df$Prestige,
     gender = partic.df$Gender
   )

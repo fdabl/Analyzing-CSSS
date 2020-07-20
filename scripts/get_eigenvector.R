@@ -12,7 +12,7 @@ library(dplyr)
 #library(pscl)
 
 data <- read.csv("data/raw/cleaned_csss-all.csv")
-#data <- data %>% filter(Year != 2011)
+data <- data %>% filter(Year != 2011)
 processed <- clean_raw_data(data)
 processed <- processed %>% 
   mutate(Iteration = str_c(Year, Location, sep = ".")) %>%
@@ -304,6 +304,9 @@ plot(prplot)
 ggsave("figures/eigencentrality_null_prestige.png", prplot,
        width = 6.5, height = 4, scale = 1.25)
 
+cplot = plot_ec_null_models(processed, attr = "cntry")
+ggsave("figures/eigencentrality_null_cntry.png", cplot, 
+       width = 5, height = 2.5, scale = 1.25)
 
 ###Top 5 Discp Plot
 attr = "discp"
