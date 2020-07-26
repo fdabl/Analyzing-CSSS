@@ -11,6 +11,8 @@ library(dplyr)
 #library(censReg)
 #library(pscl)
 
+set.seed(1234)
+
 data <- read.csv("data/raw/cleaned_csss-all.csv")
 data <- data %>% filter(Year != 2011)
 processed <- clean_raw_data(data)
@@ -263,24 +265,53 @@ generate_null_ec_data = function(processed, attr = "discp", n) {
 
 #generate plot for discipline eigencentrality
 plot_ec_null_models = function(processed, attr = "discp") {
-  all.ec = get_all_eigencent(processed, attr)
-  all.ec[all.ec == ""] = NA
-  nulldf = generate_null_ec_data(processed, attr, 100) %>%
+  nulldf = generate_null_ec_data(processed, attr, 500) %>%
     mutate(iteration = str_replace(iteration, "[.]", ",")) %>%
     separate(iteration, c("year", "location"), sep = ",") %>%
-    filter(location == "Santa Fe", year != "2005", year != "2011")
-  grouping = c(attr, "year")
-  ci = nulldf %>% group_by_at(grouping) %>%
-    summarize(upper_ci = quantile(mean.ec, 0.975), 
-              lower_ci = quantile(mean.ec, 0.025))
-  ci[ci == ""] = NA
-  p = ggplot() +
-    geom_errorbar(data = na.omit(ci), aes(x = year, group = year, ymin = lower_ci, ymax = upper_ci), color = "grey") +
-    geom_point(data = na.omit(all.ec), aes(x = year, group = year, y = mean.ec), color = "black", size = 2) +
-    facet_wrap(as.character(attr)) +
+    filter(location == "Santa Fe", year != "2005", year != "2011") %>%
+    filter(get(attr) != "") %>%
+    mutate(attr = get(attr))
+  highlight <- nulldf %>%
+    mutate(year = as.character(year)) %>%
+    group_by(year, attr) %>%
+    summarize(
+      dev = sd(mean.ec),
+      mu = mean(mean.ec),
+      upper.2 = mu + (2 * dev),
+      lower.2 = mu - (2 * dev),
+      upper.1 = mu + (dev),
+      lower.1 = mu - (dev)
+    ) %>%
+    ungroup() %>%
+    mutate(year = as.character(year))
+
+  all.ec = get_all_eigencent(processed, attr) %>% filter(get(attr) != "") %>%
+    mutate(attr = get(attr)) %>%
+    left_join(highlight, by = c("year", "attr")) %>%
+    mutate(highlight = ifelse(mean.ec > upper.2 | mean.ec < lower.2, "> 2 SD", 
+                              ifelse(mean.ec > upper.1 | mean.ec < lower.1, "> 1 SD", "< 1 SD")),
+           highlight = factor(highlight, levels = c("> 2 SD", "> 1 SD", "< 1 SD"))
+    )
+  p = ggplot(data = nulldf, aes(x = year, y = mean.ec, group = year)) +
+    geom_boxplot(alpha = 0.6, color = "darkgrey", width = 0.5) +
+    geom_point(data = na.omit(all.ec), aes(y = mean.ec, fill = highlight), color = "black", size = 2, shape = 21) +
+    facet_wrap(attr) +
+    #scale_x_discrete(breaks = c(2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019)) +
+    scale_fill_manual(values = c("> 2 SD" = "orange", "> 1 SD" = "darkslategrey", "< 1 SD" = "lightgrey"))  +
+    labs(x = "Year",
+         y = "Eigencentrality") +
     theme_minimal() +
-    labs(x = "Year", y = "Eigencentrality") +
-    theme(axis.text.x = element_text(angle = 90), panel.spacing = unit(2, "lines"))
+    theme(
+      text = element_text(family = "Helvetica"),
+      axis.title = element_text(size = 8),
+      axis.text.x = element_text(angle = 90),
+      #strip.text = element_text(face = "bold", size = 12),
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      legend.title = element_blank(),
+      legend.position = "bottom"
+    )
   return(p)
 }
 
@@ -297,7 +328,7 @@ ggsave("figures/eigencentrality_null_gender.png", gplot,
 pplot = plot_ec_null_models(processed, attr = "pos.var")
 plot(pplot)
 ggsave("figures/eigencentrality_null_position.png", pplot,
-       width = 6.5, height = 4, scale = 1.25)
+       width = 6.5, height = 2.5, scale = 1.25)
 
 prplot = plot_ec_null_models(processed, attr = "prstg")
 plot(prplot)

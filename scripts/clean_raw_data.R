@@ -51,6 +51,10 @@ isced.split <- data %>%
                            ifelse(str_detect(Position, "Post"), 
                                   "Postdoc",
                                   ifelse(str_detect(Position, "PhD"), 
-                                         "Student", Position))))
+                                         "Student", Position)))) %>%
+  mutate(Position = ifelse(Position %in% c("Student"), "Student", 
+                           ifelse(Position %in% c("Postdoc", "Professor", "Researcher"), "Faculty", 
+                                  ifelse(Position %in% c("Industry", "Medicine", "Government", "Other"), "Not Academia", 
+                                         Position))))
   return(isced.split)
 }
