@@ -5,7 +5,7 @@ library(dplyr)
 library(ACSSS)
 
 # The number of times to shuffle and generate a distribution
-NUM_ITERATIONS <- 1000
+NUM_ITERATIONS <- 50
 ATTRS <- c("gender", "prstg", "discp", "pos.var", "cntry")
 EXP <- c("Male", "Top 50", "Physical and Natural Science", "academia", "USA")
 

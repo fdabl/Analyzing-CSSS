@@ -1,0 +1,444 @@
+---
+title: "ACSSS SImulation Ex"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+library(readr)
+
+nulldata <- read_csv("/Users/dakotamurray/Documents/Analyzing-CSSS/data/derived/nulldata/aggregated_nulldata.csv") %>%
+  separate(iter, into = c("year", "location")) %>%
+  filter(location == "SantaFe")  %>%
+  filter(year != "2011")
+
+head(nulldata)
+```
+
+
+
+```{r}
+expected <- nulldata %>%
+  filter(actual == FALSE) 
+
+
+highlight <- expected %>%
+  mutate(year = as.character(year)) %>%
+  group_by(year, attr) %>%
+  summarize(
+    dev = sd(value),
+    mu = mean(value),
+    upper.2 = mu + (2 * dev),
+    lower.2 = mu - (2 * dev),
+    upper.1 = mu + (dev),
+    lower.1 = mu - (dev)
+  ) %>%
+  ungroup() %>%
+  mutate(year = as.character(year))
+
+actual <- nulldata %>%
+  filter(year != 2011) %>%
+  mutate(year = as.character(year)) %>%
+  left_join(highlight, by = c("year", "attr")) %>%
+  mutate(
+    attr = factor(attr,
+                  levels = c("gender", "pos.var", "prstg", "cntry", "discp"),
+                  labels = c("Gender", "Position", "Prestige", "Country", "Discipline")),
+    year = as.numeric(year)
+  ) %>%
+  filter(actual == T) %>%
+  mutate(highlight = ifelse(value > upper.2 | value < lower.2, "> 2 SD", 
+                            ifelse(value > upper.1 | value < lower.1, "> 1 SD", "< 1 SD")),
+         highlight = factor(highlight, levels = c("> 2 SD", "> 1 SD", "< 1 SD"))
+  )
+  
+plot <- expected %>%
+  ungroup() %>%
+  mutate(
+    attr = factor(attr,
+                  levels = c("gender", "pos.var", "prstg", "cntry", "discp"),
+                  labels = c("Gender", "Position", "Prestige", "Country", "Discipline")),
+    year = as.numeric(year),
+    
+  ) %>%
+  ggplot(aes(x = year, y = value, group = year)) +
+  geom_boxplot(alpha = 0.6, color = "darkgrey", width = 0.6) +
+  geom_point(data = actual, 
+             aes(y = value, fill = highlight), 
+             color = "black",
+             size = 2, 
+             shape = 21
+  ) +
+  facet_wrap(~attr, ncol = 1) +
+  scale_fill_manual(values = c("orange", "darkslategrey", "lightgrey"))  +
+  scale_x_continuous(breaks = c(2005, 2007, 2011, 2009, 2013, 2015, 2017, 2019)) +
+  scale_y_continuous(breaks = c(2000, 4000, 6000, 8000, 10000)) +
+  labs(x = "Year",
+       y = "HHI") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Helvetica"),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 11),
+    strip.text = element_text(face = "bold", size = 12),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    legend.title = element_blank(),
+    legend.position = "bottom"
+  )
+
+
+plot
+
+ggsave("~/Desktop/hhi_simulation_results.pdf", plot, height = 8, width = 5)
+```
+
+
+```{r}
+library(stargazer)
+df <- read_csv("/Users/dakotamurray/Documents/Analyzing-CSSS/data/derived/processed_data.csv") %>%
+  rowwise() %>%
+  mutate(
+    Topic_isced = ifelse(is.na(Topic_isced), "unknown",
+                                stringr::str_split(Topic_isced, pattern = "[;,]")[[1]][1]),
+      Topic_isced = tolower(Topic_isced),
+      Topic_isced = stringr::str_trim(Topic_isced)
+  ) %>%
+  filter(Location == "Santa Fe") %>%
+  filter(Year != 2011)
+
+
+
+participants <- df %>%
+  ungroup() %>%
+  group_by(Discipline_isced) %>%
+  summarize(
+    num.participants = length(unique(Name))
+  )
+
+projects <- df %>%
+  filter(Year != 2005) %>%
+  ungroup() %>%
+  group_by(Topic_isced) %>%
+  summarize(
+    num.projects = length(unique(Title))
+  )
+
+
+df2 <- participants %>%
+  left_join(projects, by = c("Discipline_isced" = "Topic_isced")) %>%
+  mutate(value = Discipline_isced) %>%
+  mutate(
+    value = ifelse(value == "na", "unknown", value),
+    value = ifelse(value == "physical science", "physical sciences", value),
+    value = ifelse(value == "life science", "life sciences", value),
+    value = ifelse(value %in% c("social and behavioral sciences", 
+                                "social and behavioural science",
+                                "social and behavourial science"), "social and behavioral sciences", value),
+    value = ifelse(value == "medicine", "health", value),
+    value = ifelse(value == "teacher training and education science", "education", value)
+  ) %>%
+  group_by(value) %>%
+  summarize(
+    num.projects = sum(num.projects, na.rm = T),
+    num.participants = sum(num.participants, na.rm = T)
+  ) %>%
+  mutate(
+    num.projects = ifelse(is.na(num.projects), 0, num.projects),
+    num.participants = ifelse(is.na(num.participants), 0, num.participants)
+  )
+
+
+write.csv(df2, "~/Desktop/acsss_table.csv", row.names = F)
+```
+
+```{r}
+processed <- read_csv("/Users/dakotamurray/Documents/Analyzing-CSSS/data/derived/processed_data.csv")
+
+processed
+
+processed %>%
+  rename(value = Discipline_isced) %>%
+  mutate(
+    value = ifelse(value == "na", "unknown", value),
+    value = ifelse(value == "physical science", "physical sciences", value),
+    value = ifelse(value == "life science", "life sciences", value),
+    value = ifelse(value %in% c("social and behavioral sciences", 
+                                "social and behavioural science",
+                                "social and behavourial science"), "social and behavioral sciences", value)
+    ) %>%
+  group_by(value, Size) %>%
+  summarize(
+    count = n()
+  ) %>%
+  group_by(value) %>%
+  mutate(
+    prop = count / sum(count),
+    total = sum(count)
+  ) %>%
+  filter(sum(count) > 25) %>%
+  ungroup() %>%
+  mutate(
+    value = factor(value),
+    value = reorder(value, desc(total))
+  ) %>%
+  ggplot(aes(x = Size, y = prop)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~value, ncol = 5, labeller = labeller(value = label_wrap_gen(20))) +
+  geom_text(aes(label = paste0("n = ", total)),
+            x = 9, y = 0.25) + 
+  scale_x_continuous(
+    limits = c(0, 12),
+    breaks = c(0, 4, 8, 12)
+  ) +
+  theme(
+    panel.grid.major = element_blank()
+  ) +
+  ylab("%")
+  
+
+ggsave("~/Desktop/acsss_project_size_by_discipline.png", width = 8, height = 5)
+```
+
+```{r}
+library(data.table)
+library(tidyverse)
+library(readr)
+iters <- 500
+
+
+node.files <- list.files("/Users/dakotamurray/Documents/Analyzing-CSSS/data/derived/nodefiles/",
+                         full.names = T)
+edge.files <- list.files("/Users/dakotamurray/Documents/Analyzing-CSSS/data/derived/edgefiles/", full.names = T)
+
+
+
+df <- lapply(1:length(node.files), function(i) {
+  
+  # load nodes
+  nodes <- read_csv(node.files[i]) %>%
+    select(id, discp, year)
+  
+  year <- stringr::str_split(nodes$year[1], pattern = "[.]")[[1]][1]
+  location <- stringr::str_split(nodes$year[1], pattern = "[.]")[[1]][2]
+  
+  # now remove the year var
+  nodes <- nodes %>% select(id, discp) %>%
+    mutate(
+      discp = ifelse(discp == "physical science", "physical sciences", discp),
+      discp = ifelse(discp == "life science", "life sciences", discp),
+      discp = ifelse(discp %in% c("social and behavioral sciences", 
+                                "social and behavioural science",
+                                "social and behavourial science"), "social and behavioral sciences", discp)
+    )
+    
+  
+  # load edges
+  edges <- read_csv(edge.files[i])
+  
+  
+  actual <- edges %>%
+    left_join(nodes, by = c("from" = "id")) %>%
+    rename(from.disc = discp) %>%
+    left_join(nodes, by = c("to" = "id")) %>%
+    rename(to.disc = discp) %>%
+    rowwise() %>%
+    mutate(
+      dyad = paste0(sort(c(from.disc, to.disc)), collapse = ";")
+    ) %>%
+    ungroup() %>%
+    group_by(dyad) %>%
+    summarize(
+      count = n()
+    ) %>%
+    arrange(desc(count))
+
+  # Calculate the expected by shuffling
+  expected <- rbindlist(lapply(c(1:iters), function(x) {
+    nodes.shuffled <- nodes %>%
+      ungroup() %>%
+      mutate(
+        discp = sample(discp)
+      )
+  
+     return(edges %>%
+        ungroup() %>%
+        left_join(nodes.shuffled, by = c("from" = "id")) %>%
+        rename(from.disc = discp) %>%
+        left_join(nodes.shuffled, by = c("to" = "id")) %>%
+        rename(to.disc = discp) %>%
+        rowwise() %>%
+        mutate(
+          dyad = paste0(sort(c(from.disc, to.disc)), collapse = ";")
+        ) %>%
+          ungroup() %>%
+        group_by(dyad) %>%
+        summarize(
+          count = n()
+        ) %>%
+        arrange(desc(count)) %>%
+        mutate(iter = x)
+      ) # end return(...
+  })) # end expected <- ...
+  
+  actual$type <- "actual"
+  expected$type <- "expected"
+  
+  
+  df <- rbindlist(list(actual, expected), use.names = T, fill = T)
+  df$year <- year
+  df$location <- location
+  
+  return(df)
+
+})
+
+
+
+all.df <- rbindlist(df)
+
+  
+
+all.df
+actual <- all.df %>% 
+  filter(location == "SantaFe") %>% 
+  filter(type == "actual") %>%
+  filter(year != 2011) %>%
+  filter(year != 2005)
+
+
+expected <- all.df %>% 
+  filter(location == "SantaFe") %>% 
+  filter(type == "expected") %>%
+  filter(year != 2011) %>%
+  group_by(year, dyad) %>%
+  summarize(
+    mu = mean(count),
+    sd = sd(count),
+    ci = 1.96 * sd(count) / sqrt(n())
+  )
+
+disciplines <- c("mathematics and statistics", "physical sciences", 
+                 "engineering and engineering trades", "computing", "architecture and building", 
+                 "life sciences", "agriculture and forestry and fishery", "environmental protection", 
+                 "health", "social and behavioral sciences", "business and administration", 
+                 "social services", "arts", "humanities", "law"
+                 )
+
+# helper function to capitalize string
+CapStr <- function(x) {
+  substr(x, 1, 1) <- toupper(substr(x, 1, 1))
+  x
+}
+
+
+discipline.grid <- expand.grid(disciplines, disciplines)
+
+
+all.dyads <- (discipline.grid %>%
+  unite(col = "dyad", Var1, Var2, sep = ";"))$dyad
+```
+
+
+
+
+```{r}
+plotdata <- expected %>%
+  left_join(actual, by = c("dyad", "year")) %>%
+  mutate(
+    dyad = factor(dyad, levels = unique(all.dyads))
+  ) %>%
+  arrange(desc(count))  %>%
+  ungroup() %>%
+  mutate(
+    perc.change = (count - mu) / mu * 100,
+    ratio = count / mu
+  ) %>%
+  group_by(dyad) %>%
+  summarize(
+    mean.change = mean(perc.change, na.rm = T),
+    mean.ratio = mean(ratio, na.rm = T),
+    dev = sd(perc.change, na.rm = T),
+    count = sum(count, na.rm = T),
+  ) %>%
+  filter(!is.na(mean.change)) %>%
+  filter(!grepl("na", dyad, fixed = T)) %>%
+  complete(dyad, fill = list(mean.ratio = 1, count = 0)) %>%
+  separate(dyad, into = c("conn1", "conn2"), sep = ";") %>%
+  filter(conn1 != "" & conn2 != "") %>%
+  mutate(
+    #dyad = paste0(c(sort(conn1, conn2)), collapse = ";"),
+    conn1 = (CapStr(conn1)),
+    conn1 = factor(conn1),
+    conn2 = (CapStr(conn2)),
+    conn2 = factor(conn2),
+    
+    #conn2 = factor(conn2, levels = rev(levels(conn2)))
+    #conn2 = factor(conn2, levels = rev(CapStr(disciplines)))
+  ) 
+
+plot <- plotdata %>%
+  ggplot(aes(x = conn1, y = conn2, fill = mean.ratio)) +
+  geom_tile(color = "lightgrey") +
+  geom_segment(x = 7, xend = 5.25, 
+               y = 13, yend = 11.25, lineend = "round",
+               size = 0.5,
+               color = "black", arrow = arrow(length=unit(0.10,"cm"), type = "closed")) +
+  annotate(y = "Arts", x = "Environmental protection", 
+           geom = "label", 
+           label = "Actual # dyads\nacross all years",
+           size = 3) +
+  geom_text(aes(label = ifelse(count > 0, count, "")), size = 2.5) +
+  scale_fill_gradient2(name = "Mean Ratio\nof Actual\nto Expected", low = "#2980b9", mid = "white", high = "#c0392b", midpoint = 1, na.value = "lightgrey", breaks = c(0.75, 1, 1.5, 2.0)) +
+  scale_color_manual(values = c("black", "grey")) +
+  scale_x_discrete(position = "bottom") +
+  scale_y_discrete(limits = rev(levels(plotdata$conn2)))+
+  guides(color = F) +
+  theme_minimal() +
+  
+  theme(
+    text = element_text(family = "Helvetica", size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.title = element_blank(),
+    axis.text.x = element_text(angle = 35, hjust = 1),
+    legend.position = c(0.84, 0.74),
+    legend.background = element_rect(fill = "white")
+  )
+
+
+plot
+
+ggsave("~/Desktop/dyad_analysis_nullmodel.pdf", plot, width = 7, height = 6)
+```
+
+
+```{r}
+plotdata %>%
+  arrange((mean.change)) 
+
+
+
+```
+
+```{r}
+expected %>%
+  left_join(actual, by = c("dyad", "year")) %>%
+  mutate(
+    dyad = factor(dyad, levels = unique(all.dyads$dyad))
+  ) %>%
+  arrange(desc(count)) %>%
+  mutate(
+    flag = ifelse(count > mu + (2 * sd), "over", ifelse(count < mu - (2 * sd), "under", "expected"))
+  ) %>%
+  filter(flag != "expected") %>%
+  separate(dyad, into = c("conn1", "conn2"), sep = ";") %>%
+  select(year, conn1, conn2, mu, sd, count) %>%
+  rename(exp = mu, act = count, exp.sd = sd)
+  
+  
+
+
+```
