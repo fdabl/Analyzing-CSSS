@@ -55,6 +55,9 @@ isced.split <- data %>%
   mutate(Position = ifelse(Position %in% c("Student"), "Student", 
                            ifelse(Position %in% c("Postdoc", "Professor", "Researcher"), "Faculty", 
                                   ifelse(Position %in% c("Industry", "Medicine", "Government", "Other"), "Not Academia", 
-                                         Position))))
+                                         Position)))) %>%
+  mutate(Prestige = ifelse(Prestige == "Top 50", "Top 50", "Not Top 50")) %>%
+  mutate(Position = factor(Position, levels = c("Student", "Faculty", "Not Academia"))) %>%
+  mutate(Prestige = factor(Prestige, levels = c("Top 50", "Not Top 50")))
   return(isced.split)
 }

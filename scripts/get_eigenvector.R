@@ -333,7 +333,7 @@ ggsave("figures/eigencentrality_null_position.png", pplot,
 prplot = plot_ec_null_models(processed, attr = "prstg")
 plot(prplot)
 ggsave("figures/eigencentrality_null_prestige.png", prplot,
-       width = 6.5, height = 4, scale = 1.25)
+       width = 5, height = 2.5, scale = 1.25)
 
 cplot = plot_ec_null_models(processed, attr = "cntry")
 ggsave("figures/eigencentrality_null_cntry.png", cplot, 

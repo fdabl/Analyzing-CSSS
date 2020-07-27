@@ -22,7 +22,7 @@ processed <- processed %>%
 iters = c(unique(processed$Iteration))
 disciplines = c(unique(processed$discp1))
 genders = c(unique(as.character(processed$Gender)))
-positions = c(unique(processed$Position))
+positions = c(unique(as.character(processed$Position)))
 prestige = c(unique(as.character(processed$Prestige)))
 countries = c("USA", "Not USA")
 
@@ -229,6 +229,8 @@ for(i in 2:length(iters)) {
   pos.gdc = rbind(pos.gdc, create_gdc_dataframe(nodes, edges, iters[i], positions, attr = "pos.var"))
 }
 null.pos.gdc = generate_null_data(500, processed, attr = "pos.var", iters, positions)
+pos.gdc = pos.gdc %>% mutate(discp = factor(discp, levels = c("Student", "Faculty", "Not Academia")))
+null.pos.gdc = null.pos.gdc %>% mutate(discp = factor(discp, levels = c("Student", "Faculty", "Not Academia")))
 pplot = plot_gdc_null(pos.gdc, null.pos.gdc)
 ggsave("figures/group-deg-cent_null_position.png", pplot,
        width = 6.5, height = 2.5, scale = 1.25)
@@ -242,10 +244,12 @@ for(i in 2:length(iters)) {
   nodes = build_node_dataframe(processed, iters[i])
   pres.gdc = rbind(pres.gdc, create_gdc_dataframe(nodes, edges, iters[i], prestige, attr = "prstg"))
 }
+pres.gdc = pres.gdc %>% mutate(discp = factor(discp, levels = c("Top 50", "Not Top 50")))
 null.pres.gdc = generate_null_data(500, processed, attr = "prstg", iters, prestige)
+null.pres.gdc = null.pres.gdc %>% mutate(discp = factor(discp, levels = c("Top 50", "Not Top 50")))
 prplot = plot_gdc_null(pres.gdc, null.pres.gdc)
 ggsave("figures/group-deg-cent_null_prestige.png", prplot,
-       width = 6.5, height = 4, scale = 1.25)
+       width = 5, height = 2.5, scale = 1.25)
 
 #country of study
 edges = as.data.frame(get.edgelist(simplify(graph_from_edgelist(as.matrix(build_edge_dataframe(processed, iters[1])[,2:3])))))
