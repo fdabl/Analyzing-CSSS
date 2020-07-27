@@ -44,8 +44,8 @@ if (any(!is.na(nodes[[column]]))) {
   # get the avtual value
   actual <- mean(func(nodes, edges, column)$value, na.rm = T)
   actual.df <- data.frame(value = actual, actual = T)
-  
-  
+
+
   # perform a number of iterations of shuffling
   dist <- sapply(c(1:NUM_ITERATIONS), function(x) {
     # Shuffle the node characteristics
@@ -53,10 +53,10 @@ if (any(!is.na(nodes[[column]]))) {
     nodes.shuffled[[column]] <- nodes[[column]][sample(nrow(nodes))]
     return(mean(func(nodes.shuffled, edges, column)$value, na.rm = T))
   })
-  
+
   # Combine the actual with the null model data
   df <- rbind(actual.df, data.frame(value = dist, actual = F))
-  
+
   # Save the file
   write.csv(df, path.to.output)
 } else {

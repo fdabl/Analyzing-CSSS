@@ -42,7 +42,7 @@ NULLDATA_BOOTSTRAP_AGG = osjoin(DERIVED_DIR, "bootstrap", "aggregated_nullboot.c
 PROP_WOMEN_OVER_TIME_PLOT = osjoin(FIG_DIR, 'prop_women_over_time.png')
 NULLDATA_HIST_PLOTS = osjoin(FIG_DIR, 'nullhist', '{iter}', '{func}', '{iter}_{attr}_{func}_nullhist.png')
 NULL_PERCENTILE_PLOTS = osjoin(FIG_DIR, 'nullpercentile', '{attr}_nullpercentile.png')
-BOOTSTRAP_NULL = osjoin(FIG_DIR, 'bootstrapped_nullmodel.png')
+BOOTSTRAP_NULL = osjoin(FIG_DIR, 'bootstrapped_nullmodel.pdf')
 
 
 # The iterations of the summer school
@@ -71,7 +71,8 @@ ITERS = [
 ATTRIBUTES = ['gender', 'discp', 'prstg', 'pos.var', 'cntry']
 
 # The homophily functions
-HOM_FUNCS = ['ei', 'hhi', 'perc_sim']
+#HOM_FUNCS = ['ei', 'hhi', 'perc_sim']
+HOM_FUNCS = ['hhi']
 
 
 ###################
@@ -79,17 +80,18 @@ HOM_FUNCS = ['ei', 'hhi', 'perc_sim']
 ###################
 rule all:
     input:
+        PROCESSED_DATA,
         expand(NODEFILES, iter=ITERS),
         expand(EDGEFILES, iter=ITERS),
         expand(NULLDATA_FILES, iter=ITERS, func=HOM_FUNCS, attr=ATTRIBUTES),
         NULLDATA_AGGREGATED,
-        NULLDATA_PERCENTILE,
-        PROP_WOMEN_OVER_TIME_PLOT,
-        expand(NULLDATA_HIST_PLOTS, iter=ITERS, func=HOM_FUNCS, attr=ATTRIBUTES),
-        expand(NULL_PERCENTILE_PLOTS, attr=ATTRIBUTES),
-        expand(NULLDATA_BOOTSTRAP, iter = ITERS),
-        NULLDATA_BOOTSTRAP_AGG,
-        BOOTSTRAP_NULL
+        #NULLDATA_PERCENTILE,
+        #PROP_WOMEN_OVER_TIME_PLOT,
+        #expand(NULLDATA_HIST_PLOTS, iter=ITERS, func=HOM_FUNCS, attr=ATTRIBUTES),
+        #expand(NULL_PERCENTILE_PLOTS, attr=ATTRIBUTES),
+        #expand(NULLDATA_BOOTSTRAP, iter = ITERS),
+        #NULLDATA_BOOTSTRAP_AGG,
+        #BOOTSTRAP_NULL
 
 rule process_data:
     input: CLEANED_RAW_DATA

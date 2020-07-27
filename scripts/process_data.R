@@ -14,6 +14,7 @@ output_path <- args[2]
 # Read in the raw data
 raw_data <- read.csv(path_to_data, na.strings = '')
 
+print(names(raw_data))
 # Perform the processing using the function in the ACSSS package
 processed <- ACSSS::process_acsss_data(raw_data)
 
