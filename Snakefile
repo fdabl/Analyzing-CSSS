@@ -16,7 +16,7 @@ FIG_DIR = osjoin(PROJ_HOME, 'figures')
 
 
 # Raw data file
-CLEANED_RAW_DATA = osjoin(RAW_DIR, 'cleaned_csss-all.csv')
+CLEANED_RAW_DATA = osjoin(RAW_DIR, 'anon_cleaned_csss-all.csv')
 PROCESSED_DATA = osjoin(DERIVED_DIR, 'processed_data.csv')
 
 ###############
