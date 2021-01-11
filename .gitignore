@@ -56,5 +56,6 @@ vignettes/*.pdf
 *.utf8.md
 *.knit.md
 
+.idea/
 
 .Rproj.user

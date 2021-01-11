@@ -39,13 +39,13 @@ build_edge_dataframe <- function(
     # Filter by the year
     filter(Iteration == iter) %>%
     # Select only project and person info
-    select(Title, name1 = Name, Year) %>%
+    dplyr::select(Title, name1 = Name, Year) %>%
     # Re-join the original dataframe
     left_join(df, by = c("Title", "Year")) %>%
     # Remove duplicate people
     filter(name1 != Name) %>%
     # Select all relevant info
-    select(Title, name1, name2 = Name, Topic, Topic_isced, Year) %>%
+    dplyr::select(Title, name1, name2 = Name, Topic, Topic_isced, Year) %>%
     arrange(name1) %>%
     mutate(name1 = as.factor(name1),
            name2 = as.factor(name2),
@@ -54,9 +54,9 @@ build_edge_dataframe <- function(
            name.link = paste(name.id1, name.id2, sep = "_"))
 
   edge.df <- edge.df.temp %>%
-    select(name.id1, name.id2) %>%
+    dplyr::select(name.id1, name.id2) %>%
     mutate(name.link = ifelse(name.id1<name.id2, paste(name.id1, name.id2, sep = "_"), paste(name.id2, name.id1, sep = "_"))) %>%
-    select(name.link) %>%
+    dplyr::select(name.link) %>%
     unique() %>%
     left_join(edge.df.temp, by = "name.link") %>%
     tidyr::separate(col = Topic_isced, into = c("topic.disc1", "topic.disc2"),

@@ -17,7 +17,7 @@ library(grDevices)
 require(hhi)
 require(data.table)
 library(networkD3)
-library(webshot2)
+library(webshot)
 library(rmarkdown)
 
 if (str_detect(getwd(), pattern = "krfurlong")){library(extrafont)}
@@ -155,7 +155,7 @@ iter.list <- levels(as.factor(clean_all$iteration))
 filename.list <- paste0("csss_", str_replace(str_replace(iter.list, pattern = " ", ""), pattern = "\\.", replacement = "_"), "_nw_withLegend.png")
 filebasepath <- "../img/"
 # C:\Users\krfur\Documents\Analyzing-CSSS\img
-custom.html <- '<div class = "row"><div class = "col-md-8">\n```{r echo=FALSE, fig.align="center",fig.height=4.7}\ncsss.graph\n```\n</div><div class = "col-md-4"><br><br><img src="C:/Users/krfur/Documents/Analyzing-CSSS/img/CSSS_networks_legend.png"></img></div></div>'
+custom.html <- '<div class = "row"><div class = "col-md-8">\n```{r echo=FALSE, fig.align="center",fig.height=4.7}\ncsss.graph\n```\n</div><div class = "col-md-4"><br><br><img src="C:/Users/krfurlong/Documents/csss2019/Analyzing-CSSS/img/CSSS_networks_legend.png"></img></div></div>'
 
 library(rvest)
 
@@ -168,8 +168,8 @@ for (i in 2:length(iter.list)){
   html_name <- tempfile(pattern = iter.list[i], fileext = ".html")
   render(rmd_name, output_format = "html_document", output_file = html_name)
   
-  #webshot2::webshot(html_name, file = paste0(filebasepath, filename.list[i]),
-   #       selector = "body > div.container-fluid.main-container")
+  webshot(html_name, file = paste0(filebasepath, filename.list[i]),
+          selector = "body > div.container-fluid.main-container")
 }
 
 ```

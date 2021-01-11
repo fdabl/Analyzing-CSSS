@@ -8,10 +8,12 @@ data <- data %>% filter(Year != 2011)
 processed <- clean_raw_data(data)
 
 people <- processed %>% group_by(Name) %>%
-  summarize(discp = first(discp1)) %>%
+  summarize(discp = first(discp1), 
+            year = first(Year)) %>%
   filter(discp != "")
 projects <- processed %>% group_by(Title) %>%
-  summarize(topic = first(topic1)) %>%
+  summarize(topic = first(topic1), 
+            year = first(Year)) %>%
   filter(topic != "")
 
 peop.tab <- as.data.frame(table(people$discp)) %>%
@@ -42,12 +44,45 @@ glevels <- compare %>%
 #   scale_x_discrete(limits = glevels)
 
 prop.plot <- ggplot(compare, aes(x = peop.prop, y = proj.prop, color = discp)) +
-  geom_point() +
+  geom_point(size = 3) +
   geom_abline() +
-  geom_text(aes(label = ifelse(abs(dif) > 0.02, discp, ""), vjust = 1, hjust = 1), size = 3) +
+  ggrepel::geom_text_repel(aes(label = ifelse(abs(dif) > 0.02, discp, "")), size = 3) +
   theme_minimal() +
-  guides(color = F) +
-  labs(x = "Proportion of total participants", y = "Proportion of total projects")
+  labs(color = "Discipline") +
+  labs(x = "Proportion of total participants", y = "Proportion of total projects") +
+  xlim(0.0, 0.375) + ylim(0.0, 0.375)
+
+peop.year <- as.data.frame(table(people$discp, people$year)) %>%
+  mutate(Total = sum(Freq), 
+         Prop = Freq/Total)
+proj.year <- as.data.frame(table(projects$topic, projects$year)) %>%
+  mutate(Total = sum(Freq), 
+         Prop = Freq/Total)
+
+compare2 <- proj.year %>%
+  left_join(peop.year, by = c("Var1", "Var2")) %>%
+  mutate(discp = Var1, 
+         year = Var2,
+         peop.prop = Prop.y, 
+         proj.prop = Prop.x,
+         dif = Prop.x - Prop.y) %>%
+  select(discp, peop.prop, proj.prop, dif, year) %>%
+  filter(!is.na(dif)) %>%
+  filter(year != 2005)
+
+prop.plot.year <- ggplot(compare2, aes(x = peop.prop, 
+                                       y = proj.prop, 
+                                       color = discp)) +
+  geom_point(size = 2) +
+  geom_abline() +
+  ggrepel::geom_text_repel(aes(label = ifelse(abs(dif) >= 0.01, discp, "")), size = 2.5) +
+  theme_minimal() +
+  labs(color = "Discipline") +
+  labs(x = "Proportion of total participants", y = "Proportion of total projects") +
+  xlim(0.0, 0.04) + ylim(0.0, 0.04) +
+  facet_wrap(. ~ year, ncol = 4)
 
 ggsave("figures/prop-people-projects.png", prop.plot, 
-       width = 6, height = 5.5)
+       width = 8, height = 5.5)
+ggsave("figures/prop-peop-proj_by-year.png", prop.plot.year, 
+       width = 11, height = 8.5)

@@ -1,5 +1,6 @@
 library(dplyr)
 library(stringr)
+library(tidyr)
 
 data <- read.csv("data/raw/cleaned_csss-all.csv")
 data <- data %>% filter(Year != 2011)
@@ -14,7 +15,8 @@ isced.split <- data %>%
   separate(Discipline_isced, c("discp1", "discp2"), sep = ";") %>%
   #filter(topic1 != "", discp1 != "") %>%
   mutate(topic2 = str_trim(topic2, side = "left"), 
-         discp2 = str_trim(discp2, side = "left")) %>%
+         discp2 = str_trim(discp2, side = "left"), 
+         Position = str_trim(Position, side = "both")) %>%
   mutate(discp1 = ifelse(str_detect(discp1, "Social and"), 
                          "Social and behavioral sciences", 
                          ifelse(str_detect(discp1, "Physical"), 
@@ -31,16 +33,31 @@ isced.split <- data %>%
   mutate(topic1 = ifelse(str_detect(topic1, "Environmental "), 
                          "Environmental protection", 
                          ifelse(str_detect(topic1, "Social and"), 
-                                "Social and behavioral sciences", 
-                                ifelse(str_detect(topic1, "duction"), 
-                                       "Education", 
+                                "Social and behavioral sciences",
+                                ifelse(str_detect(topic1, "Education"), 
+                                       "Teacher training and education science", 
                                        ifelse(str_detect(topic1, "Life "), 
-                                              "Life sciences", topic1))))) %>%
+                                              "Life sciences", 
+                                              ifelse(str_detect(topic1, "Medicine"), 
+                                                     "Health", topic1)))))) %>%
   mutate(topic2 = ifelse(str_detect(topic2, "Social and"), 
                          "Social and behavioral sciences", 
                          ifelse(str_detect(topic2, "Life "), 
                                 "Life sciences", 
                                 ifelse(str_detect(topic2, "Physical "), 
-                                       "Physical sciences", topic2))))
+                                       "Physical sciences", topic2)))) %>%
+  mutate(Position = ifelse(str_detect(Position, "stu"), 
+                           "Student", 
+                           ifelse(str_detect(Position, "Post"), 
+                                  "Postdoc",
+                                  ifelse(str_detect(Position, "PhD"), 
+                                         "Student", Position)))) %>%
+  mutate(Position = ifelse(Position %in% c("Student"), "Student", 
+                           ifelse(Position %in% c("Postdoc", "Professor", "Researcher"), "Faculty", 
+                                  ifelse(Position %in% c("Industry", "Medicine", "Government", "Other"), "Not Academia", 
+                                         Position)))) %>%
+  mutate(Prestige = ifelse(Prestige == "Top 50", "Top 50", "Not Top 50")) %>%
+  mutate(Position = factor(Position, levels = c("Student", "Faculty", "Not Academia"))) %>%
+  mutate(Prestige = factor(Prestige, levels = c("Top 50", "Not Top 50")))
   return(isced.split)
 }
