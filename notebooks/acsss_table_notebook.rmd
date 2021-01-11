@@ -1,0 +1,195 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(stringr)
+library(stargazer)
+
+data <- read.csv("/Users/dakotamurray/Documents/Analyzing-CSSS/data/raw/cleaned_csss-all.csv")
+data <- data %>% filter(Year != 2011)
+
+
+clean_raw_data <- function(data) {
+isced.split <- data %>%
+  filter(Location == "Santa Fe") %>%
+  mutate(Topic_isced = str_replace(Topic_isced, ",", ";")) %>%
+  separate(Topic_isced, c("topic1", "topic2"), sep = ";") %>% 
+  mutate(Discipline_isced = str_replace(Discipline_isced, ",", ";")) %>%
+  separate(Discipline_isced, c("discp1", "discp2"), sep = ";") %>%
+  #filter(topic1 != "", discp1 != "") %>%
+  mutate(topic2 = str_trim(topic2, side = "left"), 
+         discp2 = str_trim(discp2, side = "left"), 
+         Position = str_trim(Position, side = "both")) %>%
+  mutate(discp1 = ifelse(str_detect(discp1, "Social and"), 
+                         "Social and behavioral sciences", 
+                         ifelse(str_detect(discp1, "Physical"), 
+                                "Physical sciences", 
+                                discp1))) %>%
+  mutate(discp2 = ifelse(str_detect(discp2, "Social and"), 
+                         "Social and behavioral sciences", 
+                         ifelse(str_detect(discp2, "Life science"), 
+                                "Life sciences", 
+                                ifelse(str_detect(discp2, "hysical "), 
+                                       "Physical sciences", 
+                                       ifelse(str_detect(discp2, "Engineering"), 
+                                              "Engineering and engineering trades", discp2))))) %>%
+  mutate(topic1 = ifelse(str_detect(topic1, "Environmental "), 
+                         "Environmental protection", 
+                         ifelse(str_detect(topic1, "Social and"), 
+                                "Social and behavioral sciences",
+                                ifelse(str_detect(topic1, "Education"), 
+                                       "Teacher training and education science", 
+                                       ifelse(str_detect(topic1, "Life "), 
+                                              "Life sciences", 
+                                              ifelse(str_detect(topic1, "Medicine"), 
+                                                     "Health", topic1)))))) %>%
+  mutate(topic2 = ifelse(str_detect(topic2, "Social and"), 
+                         "Social and behavioral sciences", 
+                         ifelse(str_detect(topic2, "Life "), 
+                                "Life sciences", 
+                                ifelse(str_detect(topic2, "Physical "), 
+                                       "Physical sciences", topic2)))) %>%
+  mutate(Position = ifelse(str_detect(Position, "stu"), 
+                           "Student", 
+                           ifelse(str_detect(Position, "Post"), 
+                                  "Postdoc",
+                                  ifelse(str_detect(Position, "PhD"), 
+                                         "Student", Position)))) %>%
+  mutate(Position = ifelse(Position %in% c("Student"), "Student", 
+                           ifelse(Position %in% c("Postdoc", "Professor", "Researcher"), "Faculty", 
+                                  ifelse(Position %in% c("Industry", "Medicine", "Government", "Other"), "Not Academia", 
+                                         Position)))) %>%
+  mutate(Prestige = ifelse(Prestige == "Top 50", "Top 50", "Not Top 50")) %>%
+  mutate(Position = factor(Position, levels = c("Student", "Faculty", "Not Academia"))) %>%
+  mutate(Prestige = factor(Prestige, levels = c("Top 50", "Not Top 50")))
+  return(isced.split)
+}
+
+```
+
+
+
+```{r}
+df <- clean_raw_data(data)
+
+participants <- df %>%
+  filter(!is.na(Name) & Name != "") %>%
+  filter(!is.na(discp1)) %>%
+  mutate(discp1 = ifelse(is.na(discp1) | discp1 == "", "Unknown", discp1)) %>%
+  group_by(discp1) %>%
+  summarize(Participants = length(unique(Name)))
+
+participants
+```
+
+```{r}
+write_csv(df, "~/Desktop/acsss_processed_data.csv")
+
+```
+
+```{r}
+sum(participants$Participants)
+```
+
+
+
+```{r}
+df %>%
+  group_by(Name) %>%
+  summarize(
+    discps = length(unique(discp1))
+  ) %>%
+  arrange(desc(discps))
+
+```
+```{r}
+descriptive <- df %>%
+  filter(!is.na(Name) & Name != "") %>%
+  filter(!is.na(discp1)) %>%
+  mutate(discp1 = ifelse(is.na(discp1) | discp1 == "", "Unknown", discp1)) %>%
+  group_by(Year) %>%
+  summarize(
+    `# Participants` = length(unique(Name)),
+    `# Projects` = length(unique(Title)),
+    `% Female` = format(round(sum(Gender == "Female") / n(), 2), nsmall = 1),
+    `Is U.S.` = format(round(sum(Country_University == "United States") / n() * 100, 1), nsmall = 1), 
+    `% Student` = format(round(sum(Position == "Student", na.rm = T) / n() * 100, 1), nsmall = 1),
+    `% Faculty` = format(round(sum(Position == "Faculty", na.rm = T) / n() * 100, 1), nsmall = 1),
+    `% Inter` = format(round(sum(!discp1 %in% c(topic1, topic2) | !discp2 %in% c(topic1, topic2)) / n() * 100, 1), nsmall = 1)
+  )
+
+stargazer(descriptive, 
+          type = "latex", 
+          summary = F,
+          rownames = FALSE)
+```
+
+
+
+```{r}
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+projects <- df %>% 
+  mutate(topic1 = ifelse(is.na(topic1) | topic1 == "", "Unknown", topic1)) %>%
+  filter(!is.na(Name) & Name != "") %>%
+  filter(!is.na(discp1)) %>%
+  rowwise() %>%
+  group_by(topic1) %>%
+  distinct(Title, .keep_all = T) %>%
+  summarize(
+    `# Projects` = n(),
+    Mean = round(mean(Size), 1),
+    Median = as.integer(median(Size)),
+    Mode = Mode(Size)
+    #me = qnorm(0.975) * mean.size / sqrt(n())
+  ) %>%
+  full_join(participants, by = c("topic1" = "discp1")) %>%
+  rename(
+    Discipline = topic1,
+    `# Participants` = Participants,
+    `Mean Project Size` = Mean,
+    `Median Project Size` = Median,
+    `Modal Project Size` = Mode
+  ) %>%
+  select(Discipline, `# Participants`, `# Projects`, `Mean Project Size`,
+         `Median Project Size`, `Modal Project Size`) %>%
+  arrange(desc(`# Participants`))
+
+
+stargazer(projects, type = "latex", summary = F, rownames = F)
+```
+
+```{r}
+sum(projects$`# Projects`, na.rm = T)
+
+sum(projects$`# Participants`, na.rm = T)
+```
+
+
+
+```{r}
+
+groups <- df %>% 
+  mutate(topic1 = ifelse(is.na(topic1) | topic1 == "", "Unknown", topic1)) %>%
+  rowwise() %>%
+  group_by(Title) %>%
+  #distinct(Title, .keep_all = T) %>%
+  summarize(
+    size = length(unique(Name))
+    #me = qnorm(0.975) * mean.size / sqrt(n())
+  ) 
+
+
+Mode(groups$size)
+
+median(groups$size)
+sum(groups$size == 1)
+
+sum(groups$size == 1) / dim(groups)[1]
+```
