@@ -103,8 +103,8 @@ df <- read_csv("/Users/dakotamurray/Documents/Analyzing-CSSS/data/derived/proces
   mutate(
     Topic_isced = ifelse(is.na(Topic_isced), "unknown",
                                 stringr::str_split(Topic_isced, pattern = "[;,]")[[1]][1]),
-      Topic_isced = tolower(Topic_isced),
-      Topic_isced = stringr::str_trim(Topic_isced)
+    Topic_isced = tolower(Topic_isced),
+    Topic_isced = stringr::str_trim(Topic_isced)
   ) %>%
   filter(Location == "Santa Fe") %>%
   filter(Year != 2011)
@@ -112,6 +112,7 @@ df <- read_csv("/Users/dakotamurray/Documents/Analyzing-CSSS/data/derived/proces
 
 
 participants <- df %>%
+  #\filter(Year != 2005) %>%
   ungroup() %>%
   group_by(Discipline_isced) %>%
   summarize(
@@ -119,7 +120,6 @@ participants <- df %>%
   )
 
 projects <- df %>%
-  filter(Year != 2005) %>%
   ungroup() %>%
   group_by(Topic_isced) %>%
   summarize(
@@ -150,7 +150,7 @@ df2 <- participants %>%
     num.participants = ifelse(is.na(num.participants), 0, num.participants)
   )
 
-
+df2
 write.csv(df2, "~/Desktop/acsss_table.csv", row.names = F)
 ```
 
@@ -200,6 +200,178 @@ processed %>%
   
 
 ggsave("~/Desktop/acsss_project_size_by_discipline.png", width = 8, height = 5)
+```
+
+
+
+```{r}
+library(stargazer)
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+groups <- processed %>% 
+  filter(Year != 2011 ) %>%
+  filter(Location != "Beijing") %>%
+  #distinct(Title, .keep_all = T) %>%
+  rowwise() %>%
+  mutate(
+    value = first(unlist(str_split(Topic_isced, ";"))),
+    value = ifelse(value == "na", "unknown", value),
+    value = ifelse(value == "medicine", "Health", value),
+    value = ifelse(value == "Physical science", "Physical sciences", value),
+    value = ifelse(value %in% c("Social and behavioral sciences", 
+                                "Social and behavioural science",
+                                "Social and behavourial science"), "Social and behavioral sciences", value),
+    value = gsub("life sciences", "Life science", value, ignore.case = T),
+    value = gsub("(Computing,).*", "Computing", value),
+    value = gsub("(Life science,).*", "Computing", value),
+    value = gsub("(Social and behavioural science,).*", "Social and behavioral sciences", value),
+    value = gsub("Environmental Protection", "Environmental protection", value),
+  ) %>%
+  #filter(!is.na(value)) 
+  group_by(value) %>%
+  mutate(
+    Participants = length(unique(Name)),
+  ) %>%
+  distinct(Title, .keep_all = T) %>%
+  summarize(
+    `# Projects` = n(),
+    Part = first(Participants),
+    Mean = round(mean(Size), 2),
+    Median = median(Size),
+    Mode = Mode(Size)
+    #me = qnorm(0.975) * mean.size / sqrt(n())
+  ) %>%
+  arrange(desc(`# Projects`))
+
+stargazer(groups, type = "latex", summary = F)
+groups
+```
+
+
+
+```{r}
+library(egg)
+library(grid)
+library(tidyverse)
+library(scales)
+library(waffle)
+library(magrittr)
+library(hrbrthemes)
+
+blank_theme <- theme_minimal()+
+  theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.border = element_blank(),
+  panel.grid=element_blank(),
+  axis.ticks = element_blank(),
+  #plot.title=element_text(size=14, face="bold"),
+  text = element_text(family = "Helvetica", size = 14),
+  plot.title = element_text(size = 30, hjust = 0.5),
+  legend.text = element_text(size = 14),
+  legend.position = "bottom",
+  axis.text.x = element_blank()
+  )
+
+plot1 <- processed %>%
+  filter(!is.na(Gender)) %>%
+  count(Gender) %>%
+  ggplot(aes(fill = Gender, values = n)) +
+  geom_waffle(n_rows = 10,  size = 0.33, colour = "black", flip = TRUE, make_proportional = T) +
+  scale_fill_manual(
+    name = NULL,
+    values = c("firebrick", "dodgerblue4"),
+    labels = c("Female", "Male")
+  ) +
+  blank_theme +
+  theme_enhance_waffle()
+
+
+p_fixed <- set_panel_size(plot1,
+                          width  = unit(10, "cm"),
+                          height = unit(5, "in"))
+
+
+ggsave("~/Desktop/gender_waffle.png", p_fixed, width = 7, height = 6)
+```
+
+```{r}
+disc <- c("computing", "social and behavioural science", "physical sciences", "life sciences", "engineering and engineering trades", "Other")
+
+plot2 <- processed %>%
+  filter(!is.na(Discipline_isced)) %>%
+  mutate(
+    discipline = ifelse(Discipline_isced %in% disc, Discipline_isced, "Other") 
+  ) %>%
+  mutate(
+    discipline = factor(discipline, levels = disc),
+    discipline = factor(discipline, labels = c("Computing", "Social Science", "Physics", "Life Sciences", "Engineering", "Other"))
+  ) %>%
+  count(discipline) %>%
+  ggplot(aes(fill = discipline, values = n)) +
+  geom_waffle(n_rows = 10,  size = 0.33, colour = "black", flip = TRUE, make_proportional = T) +
+  viridis::scale_fill_viridis(option = "C", discrete = T, name = "") +
+  blank_theme +
+  guides(fill = guide_legend(nrow = 3)) +
+  theme_enhance_waffle()
+
+
+p_fixed <- set_panel_size(plot2,
+                          width  = unit(10, "cm"),
+                          height = unit(5, "in"))
+
+
+
+ggsave("~/Desktop/discipline_waffle.png", p_fixed, width = 7, height = 7)
+```
+
+```{r}
+country <- c("USA", "United Kingdom", "Canada", "China")
+plot3 <- processed %>%
+  filter(!is.na(Country_University)) %>%
+  mutate(
+    country = ifelse(Country_University == "USA", Country_University, "Not USA") 
+  ) %>%
+  count(country) %>%
+  ggplot(aes(fill = country, values = n)) +
+  geom_waffle(n_rows = 10,  size = 0.33, colour = "black", flip = TRUE, make_proportional = T) +
+  scale_fill_manual(values = c("#16a085", "#8e44ad"), name = "") +
+  blank_theme +
+  theme_enhance_waffle() +
+  theme(
+    legend.position = "bottom"
+  ) 
+
+
+ggsave("~/Desktop/country_waffle.png", plot3,  width = 7, height = 6)
+```
+
+
+```{r}
+plot4 <- processed %>%
+  filter(Year != 2005) %>%
+  count(Position) %>%
+  ggplot(aes(fill = Position, values = n)) +
+  geom_waffle(n_rows = 10,  size = 0.33, colour = "black", flip = TRUE, make_proportional = T) +
+  scale_fill_manual(values = c("#3498db", "#f1c40f"), labels = c("Not student", "Student"), name = "") +
+  blank_theme +
+  theme_enhance_waffle() +
+  theme(
+    legend.position = "bottom"
+  )
+
+ggsave("~/Desktop/student_waffle.png", width = 7, height = 6)
+```
+
+
+```{r}
+g <- ggarrange(plot2, plot4, plot3, plot1, nrow = 1)
+ggsave("~/Desktop/all_waggle.png", g, width = 12, height = 4)
+
+
 ```
 
 ```{r}
@@ -391,7 +563,7 @@ plot <- plotdata %>%
            label = "Actual # dyads\nacross all years",
            size = 3) +
   geom_text(aes(label = ifelse(count > 0, count, "")), size = 2.5) +
-  scale_fill_gradient2(name = "Mean Ratio\nof Actual\nto Expected", low = "#2980b9", mid = "white", high = "#c0392b", midpoint = 1, na.value = "lightgrey", breaks = c(0.75, 1, 1.5, 2.0)) +
+  scale_fill_gradient2(name = "Mean Ratio\nof Actual\nto Expected", low = "#2980b9", mid = "white", high = "#c0392b", midpoint = 1, na.value = "lightgrey", breaks = c(0.75, 1, 1.25, 1.5, 1.75, 2.0)) +
   scale_color_manual(values = c("black", "grey")) +
   scale_x_discrete(position = "bottom") +
   scale_y_discrete(limits = rev(levels(plotdata$conn2)))+
@@ -417,7 +589,7 @@ ggsave("~/Desktop/dyad_analysis_nullmodel.pdf", plot, width = 7, height = 6)
 
 ```{r}
 plotdata %>%
-  arrange((mean.change)) 
+  arrange(desc(mean.change))  %>% filter(count > 20)
 
 
 
